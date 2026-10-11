@@ -1,0 +1,46 @@
+CACTUS STOCK - Excel-backed version
+===================================
+
+What it is
+  The stock list lives in ONE Excel file (Cactus Stock.xlsx) in your shared cloud folder
+  (OneDrive, Google Drive, Dropbox or SharePoint, synced to the computer).
+  Every time the app changes something it opens that file, updates it, saves it and lets go of it.
+  Everyone who uses the app picks the same file.
+
+THREE WAYS TO RUN IT (same app, same spreadsheet)
+
+A) Try it right now, nothing to install
+   Open index.html in Chrome or Edge on a computer.
+   Click "Make a new spreadsheet", save it inside your shared cloud folder.
+   Other people: "Open the shared spreadsheet", pick the same file.
+   (If double-clicking the file does not let you pick a spreadsheet, use B.)
+
+B) As a web app you can install (needs the GitHub steps below)
+   Put these files on GitHub Pages. Open the link in Chrome or Edge on each computer.
+   Click the install icon in the address bar. It then opens in its own window like an app and
+   works with no internet.
+
+C) As a real downloadable program (.exe for Windows, .dmg for Mac, AppImage for Linux)
+   GitHub builds these for you:
+   1. Make a free account at github.com and create a new repository (Public).
+   2. Upload everything from this folder to it, INCLUDING the hidden ".github" folder.
+      If dragging does not upload ".github", tap Add file > Create new file, type
+      .github/workflows/build.yml as the name, and paste in the contents of that file.
+   3. Open the repository's Actions tab. The "Build desktop apps" job starts by itself
+      (or tap Run workflow). It takes about 5 to 10 minutes.
+   4. Open the finished run, scroll to Artifacts, and download the one for your computer.
+      Windows: the .exe. Mac: the .dmg. Send these files to the other people.
+   Windows may warn "unknown publisher" and Mac may need right-click > Open, because the
+   program is not code-signed.
+
+Rules for sharing the spreadsheet
+  - Close the spreadsheet in Excel while people use the app. Excel locks the file and the
+    app will say it cannot save.
+  - You can still edit it in Excel when nobody is using the app. Keep the column headings
+    as they are. Do not edit the grey ID column (it is hidden).
+  - The app rewrites the file each time. Colours and widths you add yourself will be reset,
+    and extra sheets or columns you add will be dropped. The Summary sheet is rebuilt.
+  - Two people saving within the same second is handled (each change is applied on top of the
+    file's current numbers). But if your cloud service has not synced yet, it may create a
+    "conflicted copy" file. If you see one, use the biggest, newest one.
+  - Phones and tablets cannot save into a spreadsheet file this way.

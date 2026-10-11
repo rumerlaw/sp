@@ -1,0 +1,53 @@
+{
+  "name": "cactus-stock",
+  "productName": "Cactus Stock",
+  "version": "1.0.0",
+  "description": "Cactus and pots stock list that keeps its data in a shared Excel spreadsheet.",
+  "main": "main.js",
+  "author": "Cactus Stock",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.cactusstock.app",
+    "productName": "Cactus Stock",
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js",
+      "icon.svg",
+      "icon-192.png",
+      "icon-512.png",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.business",
+      "identity": null
+    },
+    "afterPack": "build/adhoc-sign.js"
+  }
+}

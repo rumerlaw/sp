@@ -1,0 +1,66 @@
+name: Build desktop apps
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Make sure the Downloads page ("latest" release) exists before the builds add files to it.
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest --target "${{ github.sha }}" --title "Cactus Stock downloads" --notes "Newest version of Cactus Stock."
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    # Allowed to add files to the Downloads page; nothing else.
+    permissions:
+      contents: write
+    steps:
+      # Each helper step is locked to one exact, reviewed version (the long code), so it cannot
+      # change underneath you. Versions: checkout v6.1.0, setup-node v6.5.0.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx electron-builder --publish never
+      - name: Put the new files on the Downloads page
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(dist/*.dmg dist/*.exe)
+          if [ ${#files[@]} -eq 0 ]; then echo "No app files were made"; exit 1; fi
+          gh release upload latest "${files[@]}" --clobber
+
+  notes:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release edit latest --title "Cactus Stock downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.' "$(date -u '+%Y-%m-%d %H:%M UTC')")"
