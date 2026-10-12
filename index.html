@@ -273,6 +273,10 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 .undos .btn span{font-size:17px;line-height:1}
 
 /* ---------- light mode: soft, warm and easy on the eyes ---------- */
+/* numbers centered */
+.sheet th.n,.sheet td.n,.sheet input[type=number]{text-align:center}
+.sheet td:has(> input[type=number]),.sheet td:has(> .hidcell){text-align:center}
+.soldcard th:not(:first-child),.soldcard td:not(:first-child){text-align:center}
 /* dark mode: every field in the spreadsheet gets a soft outline */
 :root:not([data-theme="light"]) .sheet td input{border-color:rgba(255,255,255,.09);background:rgba(255,255,255,.02)}
 :root:not([data-theme="light"]) .sheet td input:hover{border-color:rgba(255,255,255,.16)}
