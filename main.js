@@ -7,6 +7,7 @@ const os = require('os');
    (opens a spreadsheet, records stock, saves, backs up, reopens) before it is published. */
 const SMOKE = process.argv.includes('--smoke-test');
 const SMOKE_DIR = path.join(os.tmpdir(), 'sp-smoke-' + process.pid);
+const blocked = [];
 const SMOKE_XLSX = path.join(SMOKE_DIR, 'Smoke Test.xlsx');
 const FILTERS = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
 
@@ -65,6 +66,7 @@ function runSmokeTest(win) {
   };
   const wc = win.webContents, logs = [];
   wc.on('console-message', (...a) => { const d = a[0] && typeof a[0] === 'object' && 'message' in a[0] ? a[0] : { level: a[1], message: a[2] }; logs.push('console: ' + d.message); });
+  wc.on('did-fail-load', (e, code, desc, url) => logs.push('load failed: ' + code + ' ' + desc + ' ' + url));
   wc.on('render-process-gone', (e, d) => logs.push('renderer gone: ' + d.reason));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const js = (code) => wc.executeJavaScript(code, true);
@@ -109,6 +111,8 @@ function runSmokeTest(win) {
     lines.push('ERROR ' + (err && err.message));
     try { lines.push('SCREEN: ' + String(await js("(document.body&&document.body.innerText||'(empty)').slice(0,600)")).replace(/\s+/g, ' ')); } catch (e2) { lines.push('could not read screen: ' + e2.message); }
     try { lines.push('VISIBLE: ' + await js("JSON.stringify(['setup','f-new','say','list'].map(function(i){var e=document.getElementById(i);return i+':'+(e?(e.hidden?'hidden':e.getClientRects().length?'shown':'not drawn'):'missing')}))")); } catch (e3) {}
+    lines.push('URL: ' + wc.getURL());
+    lines.push(...blocked.slice(-10).map((u) => 'blocked request: ' + u));
     lines.push(...logs.slice(-15));
     report(false);
   });
@@ -178,7 +182,7 @@ app.whenReady().then(() => {
   ses.setPermissionCheckHandler(() => false);
   ses.setDevicePermissionHandler(() => false);
   /* Block every internet request except the fonts, so nothing can send your data anywhere. */
-  ses.webRequest.onBeforeRequest((d, cb) => cb({ cancel: !(LOCAL_OK.test(d.url) || NET_OK.test(d.url)) }));
+  ses.webRequest.onBeforeRequest((d, cb) => { const no = !(LOCAL_OK.test(d.url) || NET_OK.test(d.url)); if (no && SMOKE) blocked.push(d.url); cb({ cancel: no }); });
   /* "Download spreadsheet" saves a copy made inside the app; anything else is refused. You always pick where it goes. */
   ses.on('will-download', (e, item) => {
     if (!/^(blob|data):/i.test(item.getURL())) { e.preventDefault(); return; }
