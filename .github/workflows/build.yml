@@ -42,6 +42,25 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npx electron-builder --publish never
+      # Start the finished app once to prove it opens with all its safety locks on.
+      - name: Check the app starts
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            app=$(ls -d dist/mac-arm64/*.app 2>/dev/null || ls -d dist/mac*/*.app | head -1)
+            exe="$app/Contents/MacOS/$(basename "$app" .app)"
+          else
+            exe="dist/win-unpacked/SP Inventory.exe"
+          fi
+          export SP_SMOKE_FILE="$RUNNER_TEMP/smoke.txt"
+          "$exe" --smoke-test || true
+          cat "$SP_SMOKE_FILE"; grep -q "SMOKE TEST OK" "$SP_SMOKE_FILE"
+      - name: Fingerprints of the files
+        shell: bash
+        run: |
+          cd dist && shopt -s nullglob
+          for f in *.dmg *.exe; do printf '%s  %s\n' "$(node -e "const c=require('crypto'),fs=require('fs');process.stdout.write(c.createHash('sha256').update(fs.readFileSync(process.argv[1])).digest('hex'))" "$f")" "$f"; done > "checksums-${RUNNER_OS}.txt"
+          cat "checksums-${RUNNER_OS}.txt"
       - name: Put the new files on the Downloads page
         shell: bash
         env:
@@ -49,9 +68,11 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           shopt -s nullglob
-          files=(dist/*.dmg dist/*.exe)
+          files=(dist/*.dmg dist/*.exe dist/checksums-*.txt)
           if [ ${#files[@]} -eq 0 ]; then echo "No app files were made"; exit 1; fi
           gh release upload latest "${files[@]}" --clobber
+          # Share the exact list of building blocks used, so it can be locked in the project.
+          if [ "$RUNNER_OS" = "macOS" ] && ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then gh release upload latest package-lock.json --clobber; fi
 
   notes:
     needs: build
@@ -64,5 +85,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           # Remove downloads left over from the old app name.
-          gh release view latest --json assets -q '.assets[].name' | grep -v '^SP\.Inventory' | while read -r f; do gh release delete-asset latest "$f" -y; done
-          gh release edit latest --title "SP Inventory downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.' "$(date -u '+%Y-%m-%d %H:%M UTC')")"
+          gh release view latest --json assets -q '.assets[].name' | grep -v -E '^(SP\.Inventory|checksums-|package-lock)' | while read -r f; do gh release delete-asset latest "$f" -y; done
+          mkdir -p sums && gh release download latest -p 'checksums-*.txt' -D sums --clobber || true
+          sums=$(cat sums/*.txt 2>/dev/null)
+          gh release edit latest --title "SP Inventory downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.\n\n**File fingerprints (SHA-256)**, to check a download is the real one:\n```\n%s\n```' "$(date -u '+%Y-%m-%d %H:%M UTC')" "$sums")"

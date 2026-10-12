@@ -2,7 +2,7 @@
   "name": "sp-inventory",
   "productName": "SP Inventory",
   "version": "1.0.0",
-  "description": "Cactus and pots stock list that keeps its data in a shared Excel spreadsheet.",
+  "description": "Stock list for plants and products that keeps its data in a shared Excel spreadsheet.",
   "main": "main.js",
   "author": "SP Inventory",
   "license": "MIT",
@@ -11,8 +11,8 @@
     "dist": "electron-builder --publish never"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.1.8"
+    "electron": "44.7.0",
+    "electron-builder": "26.0.12"
   },
   "build": {
     "appId": "com.cactusstock.app",
@@ -48,6 +48,18 @@
       "category": "public.app-category.business",
       "identity": null
     },
-    "afterPack": "build/adhoc-sign.js"
+    "afterPack": "build/adhoc-sign.js",
+    "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "loadBrowserProcessSpecificV8Snapshot": false,
+      "grantFileProtocolExtraPrivileges": false,
+      "resetAdHocDarwinSignature": true
+    }
   }
 }
