@@ -42,11 +42,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   --font-body:"Figtree","Segoe UI",system-ui,sans-serif;
   color-scheme:dark;
 }
-:root[data-theme="light"]{
-  --bg:#F1F7F3;--surface:#FFFFFF;--ink:#000000;--muted:#141D18;--danger:#C62828;--line:#1A1A1A;
-  --accent:#0E7A45;--accent-ink:#FFFFFF;--bloom:#A85200;--bloom-bg:#FFF1DC;--ok-bg:#DCF1E3;
-  color-scheme:light;
-}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:20px 56px}
 *{box-sizing:border-box}
 .wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
@@ -167,55 +162,10 @@ textarea.speak{min-height:120px;font-size:17px}
 .chip:hover{color:var(--ink);border-color:var(--accent)}
 .chip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 /* light mode: black text, green buttons for go-ahead actions, red for sold, cancel and delete */
-:root[data-theme="light"] .btn,
-:root[data-theme="light"] .btn.bloom,
-:root[data-theme="light"] .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:#08502C}
-:root[data-theme="light"] .btn[data-act="sellN"],
-:root[data-theme="light"] .btn[data-act="no"],
-:root[data-theme="light"] .btn[data-act="cancel"],
-:root[data-theme="light"] .btn[data-act="snooze"],
-:root[data-theme="light"] .btn[data-act="delask"],
-:root[data-theme="light"] .btn[data-act="del"],
-:root[data-theme="light"] #clear{background:var(--danger);color:#FFFFFF;border-color:#8A1414}
-:root[data-theme="light"] .seg .btn[aria-pressed="false"]{background:var(--surface);color:var(--accent);border-color:var(--accent)}
-:root[data-theme="light"] .btn:disabled{opacity:.6}
 /* light mode: nothing grey or faded, every word near-black */
-:root[data-theme="light"] .fine,
-:root[data-theme="light"] .sub,
-:root[data-theme="light"] label.f,
-:root[data-theme="light"] .msg,
-:root[data-theme="light"] .item .genus,
-:root[data-theme="light"] .item .money,
-:root[data-theme="light"] .item .qty small,
-:root[data-theme="light"] .stat .k,
-:root[data-theme="light"] .chip,
-:root[data-theme="light"] .sheet th,
-:root[data-theme="light"] h2{color:#000000}
-:root[data-theme="light"] .fine,:root[data-theme="light"] .item .money,:root[data-theme="light"] .item .genus{font-weight:500}
-:root[data-theme="light"] .msg.err{color:#B00020;font-weight:600}
-:root[data-theme="light"] ::placeholder{color:#3A463F;opacity:1}
-:root[data-theme="light"] input,:root[data-theme="light"] textarea{border-color:#1A1A1A}
-:root[data-theme="light"] .soldcard,:root[data-theme="light"] .item,:root[data-theme="light"] .stat,:root[data-theme="light"] .entry,:root[data-theme="light"] .addbox,:root[data-theme="light"] .sheetwrap{border-color:#1A1A1A}
 /* light mode: strong black outlines */
-:root[data-theme="light"] .btn{border-width:2px;border-color:#08502C}
-:root[data-theme="light"] .btn[data-act="sellN"],
-:root[data-theme="light"] .btn[data-act="no"],
-:root[data-theme="light"] .btn[data-act="cancel"],
-:root[data-theme="light"] .btn[data-act="snooze"],
-:root[data-theme="light"] .btn[data-act="delask"],
-:root[data-theme="light"] .btn[data-act="del"],
-:root[data-theme="light"] #clear{border-color:#8A1414}
-:root[data-theme="light"] input,:root[data-theme="light"] textarea{border-width:2px;border-color:#1A1A1A}
-:root[data-theme="light"] .soldcard,:root[data-theme="light"] .item,:root[data-theme="light"] .stat,:root[data-theme="light"] .entry,:root[data-theme="light"] .addbox,:root[data-theme="light"] .sheetwrap,:root[data-theme="light"] .empty{border-width:2px;border-color:#1A1A1A}
-:root[data-theme="light"] .sheet td,:root[data-theme="light"] .sheet th{border-bottom:1px solid #1A1A1A}
-:root[data-theme="light"] .sheet tfoot td{border-top:2px solid #1A1A1A}
-:root[data-theme="light"] .chip{border:2px dashed #1A1A1A}
-:root[data-theme="light"] .badge{border-width:2px;border-color:#1A1A1A;color:#000}
-:root[data-theme="light"] .badge.low{border-color:#A85200;color:#7A3A00}
-:root[data-theme="light"] .badge.order{border-color:#08502C;color:#08502C}
 select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:34px;cursor:pointer}
 select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-:root[data-theme="light"] select{border-width:2px;border-color:#1A1A1A;color:#000}
 .delask{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
 .item .money{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
 .hchip{background:none;border:0;padding:2px 0;margin:0;font:inherit;color:inherit;cursor:pointer;text-align:left;border-radius:4px}
@@ -318,16 +268,48 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   .stat .v{font-size:24px}
   .item .qty{font-size:34px}
 }
-:root[data-theme="light"]{--surface2:#FFFFFF;--line2:#1A1A1A;--shadow:0 1px 2px rgba(0,0,0,.06)}
-:root[data-theme="light"] body{background:var(--bg)}
-:root[data-theme="light"] textarea,:root[data-theme="light"] input,:root[data-theme="light"] select{background:#fff}
-:root[data-theme="light"] .catb{border:2px solid #1A1A1A;background:#fff;color:#000}
-:root[data-theme="light"] .catb b{color:#000}
-:root[data-theme="light"] .catb[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:#08502C}
+.undos{margin-left:auto;display:inline-flex;gap:8px}
+.undos .btn span{font-size:17px;line-height:1}
+
+/* ---------- light mode: soft, warm and easy on the eyes ---------- */
+:root[data-theme="light"]{
+  --bg:#E9EDE7;--surface:#F5F6F1;--surface2:#F8F9F5;--ink:#1D2A23;--muted:#56665C;--line:rgba(40,70,55,.13);--line2:rgba(40,70,55,.24);
+  --accent:#1F8A55;--accent-ink:#FFFFFF;--bloom:#B86B12;--bloom-bg:#F6EBD9;--ok-bg:#E2EEE5;--danger:#B3443D;
+  --shadow:0 1px 0 rgba(255,255,255,.7) inset,0 8px 24px -14px rgba(30,60,45,.35);
+  color-scheme:light;
+}
+:root[data-theme="light"] body{background:radial-gradient(1100px 520px at 50% -180px,rgba(31,138,85,.10),transparent 70%),var(--bg);color:var(--ink)}
+:root[data-theme="light"] .stat,:root[data-theme="light"] .item{background:linear-gradient(180deg,var(--surface2),var(--surface))}
+:root[data-theme="light"] .soldcard,:root[data-theme="light"] .entry,:root[data-theme="light"] .addbox,:root[data-theme="light"] .sheetwrap,:root[data-theme="light"] .empty{background:var(--surface)}
+:root[data-theme="light"] textarea,:root[data-theme="light"] input,:root[data-theme="light"] select{background:#FBFCF9;color:var(--ink);border-color:var(--line2)}
+:root[data-theme="light"] ::placeholder{color:#7D8C82;opacity:1}
+:root[data-theme="light"] .btn{background:#FBFCF9;color:var(--ink);border-color:var(--line2)}
+:root[data-theme="light"] .btn:hover{border-color:var(--accent)}
+:root[data-theme="light"] .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 6px 16px -8px rgba(31,138,85,.6)}
+:root[data-theme="light"] .btn.bloom{background:var(--bloom);color:#fff;border-color:var(--bloom)}
+:root[data-theme="light"] .btn[data-act="sellN"],:root[data-theme="light"] .btn[data-act="delask"],:root[data-theme="light"] .btn[data-act="del"]{color:var(--danger);border-color:rgba(179,68,61,.35);background:#FBF3F1}
+:root[data-theme="light"] .btn[data-act="del"]{background:var(--danger);color:#fff;border-color:var(--danger)}
+:root[data-theme="light"] .seg .btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+:root[data-theme="light"] .catb{background:#FBFCF9;border-color:var(--line2);color:var(--ink)}
+:root[data-theme="light"] .catb b{color:var(--muted)}
+:root[data-theme="light"] .catb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 :root[data-theme="light"] .catb[aria-pressed="true"] b{color:#fff}
-:root[data-theme="light"] .ctag{border:2px solid #1A1A1A;color:#000}
-:root[data-theme="light"] .chip{background:#fff;color:#000}
-:root[data-theme="light"] .item,:root[data-theme="light"] .stat{background:#fff}
+:root[data-theme="light"] .catb i{background:var(--bloom);color:#fff}
+:root[data-theme="light"] .ctag{color:var(--muted);border-color:var(--line2)}
+:root[data-theme="light"] .chip{background:#FBFCF9;color:var(--ink);border-color:var(--line2)}
+:root[data-theme="light"] .hchip b{color:var(--ink)}
+:root[data-theme="light"] .prompt{background:var(--bloom-bg);border-color:rgba(184,107,18,.55)}
+:root[data-theme="light"] .badge.low{color:var(--bloom);border-color:rgba(184,107,18,.55)}
+:root[data-theme="light"] .badge.order{color:var(--accent);border-color:rgba(31,138,85,.5)}
+:root[data-theme="light"] .item.low .qty,:root[data-theme="light"] .stat.alert .v{color:var(--bloom)}
+:root[data-theme="light"] .soldcard .pos{color:var(--accent)}
+:root[data-theme="light"] .sheet th,:root[data-theme="light"] .sheet td.c1,:root[data-theme="light"] .sheet th.c1{background:var(--surface)}
+:root[data-theme="light"] .sheet tbody tr:nth-child(even) td{background:rgba(40,70,55,.03)}
+:root[data-theme="light"] .sheet input:focus{background:#fff}
+:root[data-theme="light"] .msg.err{color:var(--danger)}
+:root[data-theme="light"] .syncbar{background:var(--bloom-bg)}
+:root[data-theme="light"] .syncbar.ok{background:var(--surface)}
+@media (max-width:520px){.soldcard table{min-width:0;font-size:13px}.soldcard th{font-size:10px;letter-spacing:.04em;padding:6px 3px}.soldcard td{padding:8px 3px}.soldcard{padding:14px 12px}}
 </style>
 </head>
 <body>
@@ -397,7 +379,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     <textarea id="say" aria-describedby="sayhelp"></textarea>
     <p class="fine" id="sayhelp"></p>
     <div class="chips" id="chips"></div>
-    <div class="row"><button class="btn primary" id="go" type="button">Save</button><button class="btn" id="clear" type="button">Clear</button></div>
+    <div class="row"><button class="btn primary" id="go" type="button">Save</button><button class="btn" id="clear" type="button">Clear</button><span class="undos"><button class="btn" id="undo" type="button" disabled title="Undo the last change"><span aria-hidden="true">↶</span> Undo</button><button class="btn" id="redo" type="button" disabled title="Redo what you just undid">Redo <span aria-hidden="true">↷</span></button></span></div>
     <div id="confirm"></div>
     <div class="msg" id="msg" role="status"></div>
   </section>
@@ -664,7 +646,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     return null;
   }
 
-  function say(text,err){var m=$('msg');m.textContent=text||'';m.className='msg'+(err?' err':'')}
+  function say(text,err){var m=$('msg');m.textContent=text||'';m.className='msg'+(err?' err':'');if(text&&typeof undoGroup!=='undefined'&&undoGroup&&!undoing&&!redoing&&!/^(Undone|Redone)/.test(text)){if(!err)undoGroup.label=String(text);undoGroup=null}if(typeof syncUndo==='function')syncUndo()}
   function needsReorder(it){return it.qty<=it.reorderAt&&!(it.onOrder>0)&&it.snoozedQty!==it.qty}
   function qctl(it){
     var id=h(it.id),dis=canWrite?'':' disabled';
@@ -813,6 +795,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     rows.forEach(function(o){['q','vc','vs','sq','pr'].forEach(function(f){T[f]+=o[f]})});
     function row(o,b){return '<tr'+(b?' class="tot"':'')+'><td>'+h(o.n)+'</td><td>'+hv('qty',o.q.toLocaleString())+'</td><td>'+hv('vc',money(o.vc))+'</td><td>'+hv('vs',money(o.vs))+'</td><td>'+o.sq.toLocaleString()+'</td><td class="pos">'+hv('profit',money(o.pr))+'</td></tr>'}
     return '<details class="soldcard" id="alld"'+(allOpen?' open':'')+'><summary><span class="st">By category</span> <span class="ss">'+rows.length+(rows.length===1?' category':' categories')+'</span></summary>'+
+      '<div class="grid">'+stat('In stock',T.q.toLocaleString(),false)+stat('Value at cost',money(T.vc),false)+stat('Value at sale',money(T.vs),false)+stat('Profit from sales',money(T.pr),false)+'</div>'+
       '<div class="tw"><table><tr><th>Category</th><th>In stock</th><th>Value at cost</th><th>Value at sale</th><th>Sold</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',q:T.q,vc:T.vc,vs:T.vs,sq:T.sq,pr:T.pr},true):'')+'</table></div></details>';
   }
   function soldCard(list){
@@ -1695,6 +1678,66 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     if(!pk.any)return '';
     return pk.pot?(' Also uses '+Math.min(n,pk.pot.qty)+' '+pk.pot.name+'.'):' There are no pots left to use.';
   }
+  /* ---------- undo ----------
+     Every change is recorded with what it replaced. One entry (for example "sold 2 at 16, 1 at 24")
+     can make several changes; they are undone together. Stock counts are put back as +/- amounts,
+     so someone else's sale in the meantime is not lost. */
+  var baseRef=ref,undoStack=[],redoStack=[],undoGroup=null,undoing=false,redoing=false,undoTimer=null;
+  function snapshot(it){var o={};['name','category','genus','vendor','cost','price','qty','reorderAt','reorderQty','onOrder','onOrderHow','snoozedQty','example','soldQty','soldRev','soldCost'].forEach(function(k){o[k]=it[k]===undefined?null:it[k]});return o}
+  function itemById(id){return allItems.filter(function(i){return i.id===id})[0]}
+  function undoRec(fn,id){
+    if(undoing)return;
+    if(!redoing)redoStack=[];
+    if(!undoGroup){undoGroup={steps:[],ids:[],label:''};undoStack.push(undoGroup);if(undoStack.length>30)undoStack.shift()}
+    undoGroup.steps.push(fn);if(undoGroup.ids.indexOf(id)<0)undoGroup.ids.push(id);
+    clearTimeout(undoTimer);undoTimer=setTimeout(function(){undoGroup=null},4000);
+    syncUndo();
+  }
+  ref=function(id){
+    var r=baseRef(id);
+    return {
+      update:function(patch){var it=itemById(id);if(it){var before={};Object.keys(patch).forEach(function(k){before[k]=it[k]===undefined?null:it[k]});undoRec(function(){return baseRef(id).update(before)},id)}return r.update(patch)},
+      set:function(data){var it=itemById(id),snap=it?snapshot(it):null;undoRec(snap?function(){return baseRef(id).set(snap)}:function(){return baseRef(id).delete()},id);return r.set(data)},
+      delete:function(){var it=itemById(id),snap=it?snapshot(it):null;if(snap)undoRec(function(){return baseRef(id).set(snap)},id);return r.delete()}
+    };
+  };
+  function syncUndo(){
+    var b=$('undo'),f=$('redo');if(!b)return;
+    var g=undoStack[undoStack.length-1],rg=redoStack[redoStack.length-1];
+    b.disabled=!g||!canWrite;
+    b.title=g&&g.label?('Undo: '+g.label):'Undo the last change';
+    if(f){f.disabled=!rg||!canWrite;f.title=rg&&rg.label?('Redo: '+rg.label):'Redo what you just undid'}
+  }
+  async function undoLast(){
+    var g=undoStack.pop();clearTimeout(undoTimer);undoGroup=null;
+    if(!g){say('Nothing to undo.');syncUndo();return}
+    var before={};g.ids.forEach(function(id){var it=itemById(id);before[id]=it?snapshot(it):null});
+    undoing=true;
+    try{for(var i=g.steps.length-1;i>=0;i--)await g.steps[i]()}catch(e){}
+    undoing=false;edit=null;delAsk=null;popupId=null;
+    redoStack.push({ids:g.ids,before:before,label:g.label});
+    say('Undone'+(g.label?': '+g.label.replace(/^Saved\.\s*/,'').replace(/\s*See the reorder question above\.?/,''):'.'));
+    syncUndo();render();
+  }
+  /* redo puts back what an undo took away; it becomes undoable again */
+  async function redoLast(){
+    var r=redoStack.pop();
+    if(!r){say('Nothing to redo.');syncUndo();return}
+    clearTimeout(undoTimer);undoGroup=null;redoing=true;
+    try{
+      for(var i=0;i<r.ids.length;i++){
+        var id=r.ids[i],want=r.before[id],now=itemById(id);
+        if(!want){if(now)await ref(id).delete()}
+        else if(now)await ref(id).update(want);
+        else await ref(id).set(want);
+      }
+    }catch(e){}
+    redoing=false;
+    if(undoGroup){undoGroup.label=r.label;undoGroup=null}
+    edit=null;delAsk=null;popupId=null;
+    say('Redone'+(r.label?': '+r.label.replace(/^Saved\.\s*/,'').replace(/\s*See the reorder question above\.?/,''):'.'));
+    syncUndo();render();
+  }
   async function apply(p){
     if(p.kind==='reorder'){
       var rn0=p.n,inp0=p.how==='inperson';
@@ -1838,6 +1881,13 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     if(pending){pending=null;$('confirm').innerHTML=''}
     if(mode!=='speak'||!db||!canWrite||$('say').value.trim().length<8)return;
     pauseTimer=setTimeout(function(){runCheck(true)},2500);
+  });
+  $('undo').addEventListener('click',function(){undoLast()});
+  $('redo').addEventListener('click',function(){redoLast()});
+  document.addEventListener('keydown',function(e){
+    if(!(e.ctrlKey||e.metaKey))return;var k=String(e.key).toLowerCase();if(k!=='z'&&k!=='y')return;
+    var t=e.target,tag=t&&t.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+    e.preventDefault();if(k==='y'||e.shiftKey)redoLast();else undoLast();
   });
   $('clear').addEventListener('click',function(){clearTimeout(pauseTimer);$('say').value='';$('confirm').innerHTML='';pending=null;say('')});
 
