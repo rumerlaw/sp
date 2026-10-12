@@ -56,6 +56,15 @@ jobs:
           export SP_SMOKE_FILE="$RUNNER_TEMP/smoke.txt"
           "$exe" --smoke-test || true
           cat "$SP_SMOKE_FILE"; grep -q "SMOKE TEST OK" "$SP_SMOKE_FILE"
+      - name: Share the test report
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          f="$RUNNER_TEMP/smoke.txt"; [ -f "$f" ] || echo "no report written" > "$f"
+          cp "$f" "test-report-${RUNNER_OS}.txt"; gh release upload latest "test-report-${RUNNER_OS}.txt" --clobber
       - name: Fingerprints of the files
         shell: bash
         run: |
@@ -86,7 +95,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           # Remove downloads left over from the old app name.
-          gh release view latest --json assets -q '.assets[].name' | grep -v -E '^(SP\.Inventory|checksums-)' | while read -r f; do gh release delete-asset latest "$f" -y; done
+          gh release view latest --json assets -q '.assets[].name' | grep -v -E '^(SP\.Inventory|checksums-|test-report-)' | while read -r f; do gh release delete-asset latest "$f" -y; done
           mkdir -p sums && gh release download latest -p 'checksums-*.txt' -D sums --clobber || true
           sums=$(cat sums/*.txt 2>/dev/null)
           gh release edit latest --title "SP Inventory downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.\n\n**File fingerprints (SHA-256)**, to check a download is the real one:\n```\n%s\n```' "$(date -u '+%Y-%m-%d %H:%M UTC')" "$sums")"
