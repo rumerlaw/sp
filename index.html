@@ -273,6 +273,13 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 .undos .btn span{font-size:17px;line-height:1}
 
 /* ---------- light mode: soft, warm and easy on the eyes ---------- */
+/* dark mode: name and category stand out a little */
+:root:not([data-theme="light"]) .sheet td.c1 input,:root:not([data-theme="light"]) .sheet td.c3 input{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.035)}
+:root:not([data-theme="light"]) .sheet td.c1 input:hover,:root:not([data-theme="light"]) .sheet td.c3 input:hover{border-color:rgba(255,255,255,.26)}
+:root:not([data-theme="light"]) .sheet thead th.c1,:root:not([data-theme="light"]) .sheet thead th.c1+th{color:var(--ink)}
+:root:not([data-theme="light"]) .ctag{color:var(--ink);border-color:rgba(255,255,255,.26);background:rgba(255,255,255,.05)}
+:root:not([data-theme="light"]) .item .name{text-shadow:0 0 0 transparent;color:#F3F6F1}
+.item .genus.off{font-style:normal;letter-spacing:.1em}
 :root[data-theme="light"]{
   --bg:#D9DDD4;--surface:#E4E7DF;--surface2:#E7EAE2;--field:#EAECE5;--ink:#1B2620;--muted:#4E5D53;--line:rgba(40,70,55,.13);--line2:rgba(40,70,55,.24);
   --accent:#1F8A55;--accent-ink:#FFFFFF;--bloom:#B86B12;--bloom-bg:#EADDC6;--ok-bg:#E2EEE5;--danger:#B3443D;
@@ -706,7 +713,9 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   }
   function visible(list){
     var s=query.toLowerCase().trim();if(!s)return list;
-    return list.filter(function(it){return (it.name+' '+it.genus+' '+(it.vendor||'')+' '+(it.category||'')).toLowerCase().indexOf(s)>=0});
+    var ck=catKey(s),isCat=!!ck&&knownCats().some(function(c){return catKey(c)===ck});
+    if(isCat&&cat!=='all'){var keep=items;items=allItems;list=sorted();items=keep}
+    return list.filter(function(it){return (isCat&&catKey(it.category)===ck)||(it.name+' '+it.genus+' '+(it.vendor||'')+' '+(it.category||'')).toLowerCase().indexOf(s)>=0});
   }
 
   /* ---------- rendering ---------- */
@@ -788,7 +797,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       var groups=[],gi={};
       vis.forEach(function(it){var k=norm(it.name);if(gi[k]==null){gi[k]=groups.length;groups.push([])}groups[gi[k]].push(it)});
       box.innerHTML=groups.map(function(g){
-        var k=norm(g[0].name),full=list.filter(function(i){return norm(i.name)===k});
+        var k=norm(g[0].name),full=list.filter(function(i){return norm(i.name)===k});if(!full.length)full=allItems.filter(function(i){return norm(i.name)===k});
         return itemHtml(pickLine(full,g),full);
       }).join('');
     }
@@ -819,19 +828,19 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   function catTotals(){
     var by={},order=[];
     allItems.forEach(function(it){
-      var k=catKey(it.category);if(!by[k]){by[k]={n:it.category||'Other',sq:0,sc:0,pr:0};order.push(k)}
-      var o=by[k];o.sq+=it.soldQty;o.sc+=it.soldCost;o.pr+=it.soldRev-it.soldCost;
+      var k=catKey(it.category);if(!by[k]){by[k]={n:it.category||'Other',sq:0,sc:0,sr:0,pr:0};order.push(k)}
+      var o=by[k];o.sq+=it.soldQty;o.sc+=it.soldCost;o.sr+=it.soldRev;o.pr+=it.soldRev-it.soldCost;
     });
     return order.map(function(k){return by[k]}).sort(function(a,b){return collate.compare(a.n,b.n)});
   }
   function allCard(){
-    var rows=catTotals(),T={sq:0,sc:0,pr:0};
-    rows.forEach(function(o){T.sq+=o.sq;T.sc+=o.sc;T.pr+=o.pr});
-    function row(o,b){return '<tr'+(b?' class="tot"':'')+'><td>'+h(o.n)+'</td><td>'+o.sq.toLocaleString()+'</td><td>'+hv('cost',money(o.sc))+'</td><td class="pos">'+hv('profit',money(o.pr))+'</td></tr>'}
+    var rows=catTotals(),T={sq:0,sc:0,sr:0,pr:0};
+    rows.forEach(function(o){T.sq+=o.sq;T.sc+=o.sc;T.sr+=o.sr;T.pr+=o.pr});
+    function row(o,b){return '<tr'+(b?' class="tot"':'')+'><td>'+h(o.n)+'</td><td>'+o.sq.toLocaleString()+'</td><td>'+hv('cost',money(o.sc))+'</td><td>'+hv('price',money(o.sr))+'</td><td class="pos">'+hv('profit',money(o.pr))+'</td></tr>'}
     return '<details class="soldcard" id="alld"'+(allOpen?' open':'')+'><summary><span class="st">By category</span> <span class="ss">Profit '+(hideF.profit?'•••':money(T.pr))+'</span></summary>'+
-      '<div class="grid">'+stat('Sold',T.sq.toLocaleString(),false)+stat('Bought at',money(T.sc),false)+stat('Profit',money(T.pr),false)+'</div>'+
-      '<div class="tw"><table><tr><th>Category</th><th>Sold</th><th>Bought at</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',sq:T.sq,sc:T.sc,pr:T.pr},true):'')+'</table></div>'+
-      '<p class="fine" style="margin-top:8px">Bought at is what you paid for the ones you sold.</p></details>';
+      '<div class="grid">'+stat('Sold',T.sq.toLocaleString(),false)+stat('Bought at',money(T.sc),false)+stat('Sold at',money(T.sr),false)+stat('Profit',money(T.pr),false)+'</div>'+
+      '<div class="tw"><table><tr><th>Category</th><th>Sold</th><th>Bought at</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',sq:T.sq,sc:T.sc,sr:T.sr,pr:T.pr},true):'')+'</table></div>'+
+      '<p class="fine" style="margin-top:8px">Bought at is what you paid for the ones you sold; Sold at is what they sold for.</p></details>';
   }
   function soldCard(list){
     var rows=list.filter(function(it){return it.soldQty>0});
@@ -857,7 +866,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     }).join('');
     var t=totals(vis);
     return '<div class="sheetwrap"><table class="sheet" data-key="'+h(key)+'"><thead><tr>'+
-      '<th class="c1">Name</th><th>Category</th><th>Genus / type</th>'+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+th('reorderAt','Remind at','n')+
+      '<th class="c1">Name</th><th>Category</th>'+th('genus','Genus / type','')+''+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+th('reorderAt','Remind at','n')+
       th('vc','Value at cost','n')+th('vs','Value at sale','n')+th('pf','Profit if sold','n')+'<th>Sold / add</th></tr></thead>'+
       '<tbody>'+rows+'</tbody><tfoot><tr><td colspan="6">Total of rows shown</td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td><td></td>'+
       '<td class="n" data-total="vc">'+hv('vc',money(t.vc))+'</td><td class="n" data-total="vs">'+hv('vs',money(t.vs))+'</td><td class="n" data-total="pf">'+hv('pf',money(t.pf))+'</td><td></td></tr></tfoot></table></div>';
@@ -929,7 +938,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       tot='<small class="tot">'+(hideF.qty?'':all+' across '+group.length+' lines')+'</small>';
     }
     return '<article class="item'+(low?' low':'')+'"><div><div class="name">'+h(it.name)+badges+'</div>'+
-      '<div class="meta">'+(it.genus?'<span class="genus">'+h(it.genus)+'</span>':'')+'<span class="ctag">'+h(it.category)+'</span></div></div>'+
+      '<div class="meta">'+(it.genus?'<span class="genus'+(hideF.genus?' off':'')+'" data-hide="genus" title="Tap to hide or show">'+(hideF.genus?'•••':h(it.genus))+'</span>':'')+'<span class="ctag">'+h(it.category)+'</span></div></div>'+
       '<div class="qty'+(hideF.qty?' off':'')+'" data-hide="qty" title="Tap to hide or show">'+(hideF.qty?'•••':it.qty)+'<small>in stock</small>'+tot+'</div>'+lines+
       '<div class="money">'+chip('cost','Cost',money(it.cost))+(it.vendor?chip('vendor','From',h(it.vendor)):'')+
         (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit if sold',money(it.qty*(it.price-it.cost))))+
