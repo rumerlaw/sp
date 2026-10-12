@@ -273,12 +273,11 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 .undos .btn span{font-size:17px;line-height:1}
 
 /* ---------- light mode: soft, warm and easy on the eyes ---------- */
-/* dark mode: name and category stand out a little */
-:root:not([data-theme="light"]) .sheet td.c1 input,:root:not([data-theme="light"]) .sheet td.c3 input{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.035)}
-:root:not([data-theme="light"]) .sheet td.c1 input:hover,:root:not([data-theme="light"]) .sheet td.c3 input:hover{border-color:rgba(255,255,255,.26)}
-:root:not([data-theme="light"]) .sheet thead th.c1,:root:not([data-theme="light"]) .sheet thead th.c1+th{color:var(--ink)}
-:root:not([data-theme="light"]) .ctag{color:var(--ink);border-color:rgba(255,255,255,.26);background:rgba(255,255,255,.05)}
-:root:not([data-theme="light"]) .item .name{text-shadow:0 0 0 transparent;color:#F3F6F1}
+/* dark mode: every field in the spreadsheet gets a soft outline */
+:root:not([data-theme="light"]) .sheet td input{border-color:rgba(255,255,255,.09);background:rgba(255,255,255,.02)}
+:root:not([data-theme="light"]) .sheet td input:hover{border-color:rgba(255,255,255,.16)}
+:root:not([data-theme="light"]) .sheet .hidcell{display:inline-block;border:1px solid rgba(255,255,255,.07);border-radius:4px;padding:5px 8px}
+:root:not([data-theme="light"]) .ctag{color:var(--ink);border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.03)}
 .item .genus.off{font-style:normal;letter-spacing:.1em}
 :root[data-theme="light"]{
   --bg:#D9DDD4;--surface:#E4E7DF;--surface2:#E7EAE2;--field:#EAECE5;--ink:#1B2620;--muted:#4E5D53;--line:rgba(40,70,55,.13);--line2:rgba(40,70,55,.24);
