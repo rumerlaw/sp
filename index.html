@@ -237,7 +237,8 @@ textarea{font-size:16px}
 /* list tools: the search box stays short until you type in it */
 .tools{gap:10px;margin:12px 0}
 .tools input[type=search]{flex:0 0 170px;width:170px;transition:flex-basis .25s ease,width .25s ease}
-.tools input[type=search]:focus,.tools input[type=search].has{flex:1 1 100%;width:100%}
+.tools input[type=search]:focus,.tools input[type=search].has{flex:0 0 250px;width:250px}
+@media (max-width:520px){.tools input[type=search]:focus,.tools input[type=search].has{flex-basis:195px;width:195px}.tools select{flex:1 1 0;min-width:0;max-width:200px}}
 /* cards */
 .list{gap:12px}
 .item{border-radius:16px;padding:18px 18px 14px;gap:8px 16px;background:linear-gradient(180deg,var(--surface2),var(--surface))}
