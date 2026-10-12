@@ -40,7 +40,8 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+      # Installs exactly the versions in package-lock.json, checked against their fingerprints.
+      - run: npm ci --no-audit --no-fund
       - run: npx electron-builder --publish never
       # Start the finished app once to prove it opens with all its safety locks on.
       - name: Check the app starts
@@ -85,7 +86,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           # Remove downloads left over from the old app name.
-          gh release view latest --json assets -q '.assets[].name' | grep -v -E '^(SP\.Inventory|checksums-|package-lock)' | while read -r f; do gh release delete-asset latest "$f" -y; done
+          gh release view latest --json assets -q '.assets[].name' | grep -v -E '^(SP\.Inventory|checksums-)' | while read -r f; do gh release delete-asset latest "$f" -y; done
           mkdir -p sums && gh release download latest -p 'checksums-*.txt' -D sums --clobber || true
           sums=$(cat sums/*.txt 2>/dev/null)
           gh release edit latest --title "SP Inventory downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.\n\n**File fingerprints (SHA-256)**, to check a download is the real one:\n```\n%s\n```' "$(date -u '+%Y-%m-%d %H:%M UTC')" "$sums")"
