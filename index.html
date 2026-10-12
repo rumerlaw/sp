@@ -273,30 +273,30 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 
 /* ---------- light mode: soft, warm and easy on the eyes ---------- */
 :root[data-theme="light"]{
-  --bg:#E9EDE7;--surface:#F5F6F1;--surface2:#F8F9F5;--ink:#1D2A23;--muted:#56665C;--line:rgba(40,70,55,.13);--line2:rgba(40,70,55,.24);
-  --accent:#1F8A55;--accent-ink:#FFFFFF;--bloom:#B86B12;--bloom-bg:#F6EBD9;--ok-bg:#E2EEE5;--danger:#B3443D;
-  --shadow:0 1px 0 rgba(255,255,255,.7) inset,0 8px 24px -14px rgba(30,60,45,.35);
+  --bg:#D9DDD4;--surface:#E4E7DF;--surface2:#E7EAE2;--field:#EAECE5;--ink:#1B2620;--muted:#4E5D53;--line:rgba(40,70,55,.13);--line2:rgba(40,70,55,.24);
+  --accent:#1F8A55;--accent-ink:#FFFFFF;--bloom:#B86B12;--bloom-bg:#EADDC6;--ok-bg:#E2EEE5;--danger:#B3443D;
+  --shadow:0 1px 0 rgba(255,255,255,.35) inset,0 8px 22px -14px rgba(30,50,40,.35);
   color-scheme:light;
 }
-:root[data-theme="light"] body{background:radial-gradient(1100px 520px at 50% -180px,rgba(31,138,85,.10),transparent 70%),var(--bg);color:var(--ink)}
+:root[data-theme="light"] body{background:radial-gradient(1100px 520px at 50% -180px,rgba(31,138,85,.07),transparent 70%),var(--bg);color:var(--ink)}
 :root[data-theme="light"] .stat,:root[data-theme="light"] .item{background:linear-gradient(180deg,var(--surface2),var(--surface))}
 :root[data-theme="light"] .soldcard,:root[data-theme="light"] .entry,:root[data-theme="light"] .addbox,:root[data-theme="light"] .sheetwrap,:root[data-theme="light"] .empty{background:var(--surface)}
-:root[data-theme="light"] textarea,:root[data-theme="light"] input,:root[data-theme="light"] select{background:#FBFCF9;color:var(--ink);border-color:var(--line2)}
+:root[data-theme="light"] textarea,:root[data-theme="light"] input,:root[data-theme="light"] select{background:var(--field);color:var(--ink);border-color:var(--line2)}
 :root[data-theme="light"] ::placeholder{color:#7D8C82;opacity:1}
-:root[data-theme="light"] .btn{background:#FBFCF9;color:var(--ink);border-color:var(--line2)}
+:root[data-theme="light"] .btn{background:var(--field);color:var(--ink);border-color:var(--line2)}
 :root[data-theme="light"] .btn:hover{border-color:var(--accent)}
 :root[data-theme="light"] .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 6px 16px -8px rgba(31,138,85,.6)}
 :root[data-theme="light"] .btn.bloom{background:var(--bloom);color:#fff;border-color:var(--bloom)}
-:root[data-theme="light"] .btn[data-act="sellN"],:root[data-theme="light"] .btn[data-act="delask"],:root[data-theme="light"] .btn[data-act="del"]{color:var(--danger);border-color:rgba(179,68,61,.35);background:#FBF3F1}
+:root[data-theme="light"] .btn[data-act="sellN"],:root[data-theme="light"] .btn[data-act="delask"],:root[data-theme="light"] .btn[data-act="del"]{color:var(--danger);border-color:rgba(179,68,61,.35);background:#E8DCD7}
 :root[data-theme="light"] .btn[data-act="del"]{background:var(--danger);color:#fff;border-color:var(--danger)}
 :root[data-theme="light"] .seg .btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
-:root[data-theme="light"] .catb{background:#FBFCF9;border-color:var(--line2);color:var(--ink)}
+:root[data-theme="light"] .catb{background:var(--field);border-color:var(--line2);color:var(--ink)}
 :root[data-theme="light"] .catb b{color:var(--muted)}
 :root[data-theme="light"] .catb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 :root[data-theme="light"] .catb[aria-pressed="true"] b{color:#fff}
 :root[data-theme="light"] .catb i{background:var(--bloom);color:#fff}
 :root[data-theme="light"] .ctag{color:var(--muted);border-color:var(--line2)}
-:root[data-theme="light"] .chip{background:#FBFCF9;color:var(--ink);border-color:var(--line2)}
+:root[data-theme="light"] .chip{background:var(--field);color:var(--ink);border-color:var(--line2)}
 :root[data-theme="light"] .hchip b{color:var(--ink)}
 :root[data-theme="light"] .prompt{background:var(--bloom-bg);border-color:rgba(184,107,18,.55)}
 :root[data-theme="light"] .badge.low{color:var(--bloom);border-color:rgba(184,107,18,.55)}
@@ -305,7 +305,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 :root[data-theme="light"] .soldcard .pos{color:var(--accent)}
 :root[data-theme="light"] .sheet th,:root[data-theme="light"] .sheet td.c1,:root[data-theme="light"] .sheet th.c1{background:var(--surface)}
 :root[data-theme="light"] .sheet tbody tr:nth-child(even) td{background:rgba(40,70,55,.03)}
-:root[data-theme="light"] .sheet input:focus{background:#fff}
+:root[data-theme="light"] .sheet input:focus{background:var(--field)}
 :root[data-theme="light"] .msg.err{color:var(--danger)}
 :root[data-theme="light"] .syncbar{background:var(--bloom-bg)}
 :root[data-theme="light"] .syncbar.ok{background:var(--surface)}
@@ -988,7 +988,8 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var cm=rest.match(new RegExp('(for|paid|at|cost(?:ing|s)?)\\s+\\$?(\\d+(?:\\.\\d+)?)\\s*'+MONEY+'?(\\s+(?:each|apiece|a piece|per plant))?','i'));
     var cost=null,total=null;
     if(cm){var v=parseFloat(cm[2]);if(cm[3]||/^at$/i.test(cm[1])){cost=v}else{total=v;cost=v/q}}
-    else{var bn=rest.match(/(?:^|[^\d.$])\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*$/i);if(bn){cost=parseFloat(bn[1])}}
+    else if(rest.match(/\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*(?:each|apiece|a piece|ea)\b/i)){cost=parseFloat(rest.match(/\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*(?:each|apiece|a piece|ea)\b/i)[1])}
+    else{var bn=rest.match(/(?:^|[^\d.$])\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*$/i);if(bn){total=parseFloat(bn[1]);cost=total/q}}
     var pm=after.match(/\$?(\d+(?:\.\d+)?)/);
     var gm=t.match(/\bgenus\s+([A-Za-z]+)/i);
     var price=pm?parseFloat(pm[1]):null;
@@ -1187,7 +1188,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var nm=title(r.name);
     var note=(r.cost==null||r.price==null)?' No price heard for one or both, so they start at $0.00. You can set them in the spreadsheet or with Edit.':'';
     var gN=r.genus?genusText(r.genus):(guessGenus(nm)||'');
-    return {kind:'new',name:nm,genus:gN,category:r.category||(cat!=='all'?cat:guessCategory(nm,gN)),vendor:r.vendor||'',qty:r.qty,cost:r.cost||0,price:r.price||0,
+    return {kind:'new',costTotal:r.costTotal!=null?r.costTotal:null,name:nm,genus:gN,category:r.category||(cat!=='all'?cat:guessCategory(nm,gN)),vendor:r.vendor||'',qty:r.qty,cost:r.cost||0,price:r.price||0,
       text:(sepLine?'New separate line: ':'New: ')+nm+(r.genus?' ('+genusText(r.genus)+')':'')+(r.vendor?' from '+r.vendor:'')+', '+r.qty+' in stock, cost '+money(r.cost||0)+' each'+(r.costTotal!=null?' ('+money(r.costTotal)+' for all '+r.qty+')':'')+', sells '+money(r.price||0)+' each.'+note};
   }
 
@@ -1794,7 +1795,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     }else{
       var id=freshId(p.name);
       var doc={name:p.name,category:p.category,genus:p.genus,vendor:p.vendor||'',cost:p.cost,price:p.price,qty:p.qty,reorderAt:1,reorderQty:10,onOrder:0,snoozedQty:null};
-      if(await guard(function(){return ref(id).set(doc)}))say('Saved. '+p.name+' added with '+p.qty+' in stock.'+((p.price)?'':' No sell price yet, so profit will show negative. Say “set '+p.name.toLowerCase()+' price to 8”.'));
+      if(await guard(function(){return ref(id).set(doc)}))say('Saved. '+p.name+' added with '+p.qty+' in stock'+(p.cost?', '+money(p.cost)+' each'+(p.costTotal!=null?' ('+money(p.costTotal)+' for all '+p.qty+')':''):'')+'.'+((p.price)?'':' No sell price yet, so profit will show negative. Say “set '+p.name.toLowerCase()+' price to 8”.'));
     }
     pending=null;$('confirm').innerHTML='';$('say').value='';
   }
