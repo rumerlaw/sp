@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -26,15 +26,17 @@ function check(p) {
   return r;
 }
 /* Only this app's own page (the top of the window, not anything inside it) may ask for files. */
-const { pathToFileURL } = require('url');
-const PAGE_URL = pathToFileURL(path.join(__dirname, 'index.html')).href;
+/* The page is served from inside the app on a private address (app://sp/), never from the open file system. */
+const PAGE_URL = 'app://sp/index.html';
+const SERVED = { 'index.html': 'text/html; charset=utf-8', 'icon.svg': 'image/svg+xml', 'icon-192.png': 'image/png', 'icon-512.png': 'image/png' };
+protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 const fromOurPage = (e) => {
   const f = e.senderFrame;
   return !!f && f.parent === null && f.url.split('#')[0].split('?')[0] === PAGE_URL;
 };
 /* Network: the app works offline. The only thing it may load from the internet is its two fonts. */
 const NET_OK = /^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com)\//i;
-const LOCAL_OK = /^(file|data|blob|devtools):/i;
+const LOCAL_OK = /^(app:\/\/sp\/|data:|blob:|devtools:)/i;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -53,7 +55,7 @@ function createWindow() {
   win.webContents.on('will-redirect', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   if (SMOKE) runSmokeTest(win);
-  win.loadFile('index.html');
+  win.loadURL(PAGE_URL);
   return win;
 }
 
@@ -177,6 +179,15 @@ app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if
 app.whenReady().then(() => {
   loadAllowed();
   const ses = session.defaultSession;
+  /* Only the app's own few files can be served, nothing else on the computer. */
+  protocol.handle('app', async (req) => {
+    try {
+      const u = new URL(req.url), name = decodeURIComponent(u.pathname).replace(/^\/+/, '');
+      if (u.host !== 'sp' || !Object.prototype.hasOwnProperty.call(SERVED, name)) return new Response('Not found', { status: 404 });
+      const body = await fs.promises.readFile(path.join(__dirname, name));
+      return new Response(body, { headers: { 'content-type': SERVED[name], 'x-content-type-options': 'nosniff' } });
+    } catch (err) { return new Response('Not found', { status: 404 }); }
+  });
   /* No camera, microphone, location or other device permissions are ever granted. */
   ses.setPermissionRequestHandler((wc, perm, cb) => cb(false));
   ses.setPermissionCheckHandler(() => false);
