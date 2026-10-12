@@ -63,7 +63,10 @@ function runSmokeTest(win) {
     console.log(m); if (process.env.SP_SMOKE_FILE) { try { fs.writeFileSync(process.env.SP_SMOKE_FILE, m); } catch (err) {} }
     app.exit(ok ? 0 : 1);
   };
-  const wc = win.webContents, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const wc = win.webContents, logs = [];
+  wc.on('console-message', (...a) => { const d = a[0] && typeof a[0] === 'object' && 'message' in a[0] ? a[0] : { level: a[1], message: a[2] }; logs.push('console: ' + d.message); });
+  wc.on('render-process-gone', (e, d) => logs.push('renderer gone: ' + d.reason));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const js = (code) => wc.executeJavaScript(code, true);
   const until = async (code, what, ms = 20000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await js(code)) return; } catch (e) {} await wait(250); } throw new Error('Gave up waiting for ' + what); };
   const check = (cond, label) => { lines.push((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) throw new Error(label); };
@@ -79,11 +82,11 @@ function runSmokeTest(win) {
   (async () => {
     await loaded();
     check(await js("typeof window.cactusNative==='object'&&typeof require==='undefined'&&typeof process==='undefined'"), 'page is sandboxed and the file bridge is there');
-    await until("!!document.getElementById('f-new')&&!!document.getElementById('f-new').offsetParent", 'the start screen');
+    await until("!!document.getElementById('f-new')&&document.getElementById('f-new').getClientRects().length>0", 'the start screen');
     await js("document.getElementById('f-new').click()");
     await until("!!document.getElementById('say')", 'the main screen');
     await js("(function(){var b=document.querySelector('[data-mode=type]');if(b)b.click();return true})()");
-    await until("!!document.getElementById('say').offsetParent", 'the typing box');
+    await until("document.getElementById('say').getClientRects().length>0", 'the typing box');
     let m = await say('bought 6 candles at 18 sell for 10 each');
     check(/Saved/i.test(m) && /Candles/.test(m), 'typed purchase saved: ' + m.trim());
     m = await say('sold 2 candles');
@@ -102,7 +105,13 @@ function runSmokeTest(win) {
     const txt = await js("document.getElementById('list').innerText");
     check(/\b4\b/.test(txt), 'reopened the spreadsheet and it shows 4 candles left');
     report(true);
-  })().catch((err) => { lines.push('ERROR ' + (err && err.message)); report(false); });
+  })().catch(async (err) => {
+    lines.push('ERROR ' + (err && err.message));
+    try { lines.push('SCREEN: ' + String(await js("(document.body&&document.body.innerText||'(empty)').slice(0,600)")).replace(/\s+/g, ' ')); } catch (e2) { lines.push('could not read screen: ' + e2.message); }
+    try { lines.push('VISIBLE: ' + await js("JSON.stringify(['setup','f-new','say','list'].map(function(i){var e=document.getElementById(i);return i+':'+(e?(e.hidden?'hidden':e.getClientRects().length?'shown':'not drawn'):'missing')}))")); } catch (e3) {}
+    lines.push(...logs.slice(-15));
+    report(false);
+  });
 }
 
 ipcMain.handle('open', async (e) => {
