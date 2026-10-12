@@ -18,7 +18,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release view latest >/dev/null 2>&1 || gh release create latest --target "${{ github.sha }}" --title "Cactus Stock downloads" --notes "Newest version of Cactus Stock."
+          gh release view latest >/dev/null 2>&1 || gh release create latest --target "${{ github.sha }}" --title "SP Inventory downloads" --notes "Newest version of SP Inventory."
 
   build:
     needs: prepare
@@ -63,4 +63,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release edit latest --title "Cactus Stock downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.' "$(date -u '+%Y-%m-%d %H:%M UTC')")"
+          gh release edit latest --title "SP Inventory downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.' "$(date -u '+%Y-%m-%d %H:%M UTC')")"

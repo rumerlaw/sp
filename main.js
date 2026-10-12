@@ -22,7 +22,7 @@ const fromOurPage = (e) => e.senderFrame && e.senderFrame.url.startsWith('file:/
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 560, height: 920, backgroundColor: '#050806', title: 'Cactus Stock',
+    width: 560, height: 920, backgroundColor: '#050806', title: 'SP Inventory',
     icon: path.join(__dirname, 'icon-512.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -45,7 +45,7 @@ ipcMain.handle('open', async (e) => {
 });
 ipcMain.handle('create', async (e) => {
   if (!fromOurPage(e)) return null;
-  const r = await dialog.showSaveDialog({ defaultPath: 'Cactus Stock.xlsx', filters: FILTERS });
+  const r = await dialog.showSaveDialog({ defaultPath: 'SP Inventory.xlsx', filters: FILTERS });
   if (r.canceled) return null;
   let p = r.filePath; if (!/\.xlsx$/i.test(p)) p += '.xlsx';
   allow(p); return p;

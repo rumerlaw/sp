@@ -1,8 +1,8 @@
-CACTUS STOCK - Excel-backed version
+SP INVENTORY - Excel-backed version
 ===================================
 
 What it is
-  The stock list lives in ONE Excel file (Cactus Stock.xlsx) in your shared cloud folder
+  The stock list lives in ONE Excel file (SP Inventory.xlsx) in your shared cloud folder
   (OneDrive, Google Drive, Dropbox or SharePoint, synced to the computer).
   Every time the app changes something it opens that file, updates it, saves it and lets go of it.
   Everyone who uses the app picks the same file.

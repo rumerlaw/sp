@@ -1,10 +1,10 @@
 {
-  "name": "cactus-stock",
-  "productName": "Cactus Stock",
+  "name": "sp-inventory",
+  "productName": "SP Inventory",
   "version": "1.0.0",
   "description": "Cactus and pots stock list that keeps its data in a shared Excel spreadsheet.",
   "main": "main.js",
-  "author": "Cactus Stock",
+  "author": "SP Inventory",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.cactusstock.app",
-    "productName": "Cactus Stock",
+    "productName": "SP Inventory",
     "files": [
       "index.html",
       "main.js",

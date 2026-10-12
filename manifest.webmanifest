@@ -1,6 +1,6 @@
 {
-  "name": "Cactus Stock",
-  "short_name": "Cactus Stock",
+  "name": "SP Inventory",
+  "short_name": "SP Inventory",
   "description": "Stock list for cacti and pots",
   "start_url": "./",
   "scope": "./",

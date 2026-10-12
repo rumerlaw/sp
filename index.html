@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
-<title>Cactus Stock</title>
+<title>SP Inventory</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -327,18 +327,18 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 </head>
 <body>
 <div id="convert" class="wrap" hidden>
-  <header class="top"><div><h1>Cactus Stock</h1><p class="sub">This spreadsheet was not made by Cactus Stock.</p></div></header>
+  <header class="top"><div><h1>SP Inventory</h1><p class="sub">This spreadsheet was not made by SP Inventory.</p></div></header>
   <section class="addbox" style="padding:14px">
     <p style="font-size:15px"><strong id="cv-name"></strong> has its own layout. I have not changed it.</p>
     <p class="fine" id="cv-found" style="margin-top:8px"></p>
     <ul class="fine" id="cv-list" style="margin:6px 0 0 18px;display:flex;flex-direction:column;gap:2px"></ul>
-    <p class="fine" style="margin-top:10px">To use it as the shared list, Cactus Stock rewrites it in its own layout (Cacti, Pots and Summary sheets). Anything else in the file, like other sheets, notes or colours, is not kept.</p>
+    <p class="fine" style="margin-top:10px">To use it as the shared list, SP Inventory rewrites it in its own layout (Cacti, Pots and Summary sheets). Anything else in the file, like other sheets, notes or colours, is not kept.</p>
     <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn primary" type="button" id="cv-go">Convert it</button><button class="btn" type="button" id="cv-cancel">Leave it alone</button></div>
     <p class="fine" id="cv-msg" style="margin-top:8px"></p>
   </section>
 </div>
 <div id="unlock" class="wrap" hidden>
-  <header class="top"><div><h1>Cactus Stock</h1><p class="sub">This spreadsheet has a password from an earlier version.</p></div></header>
+  <header class="top"><div><h1>SP Inventory</h1><p class="sub">This spreadsheet has a password from an earlier version.</p></div></header>
   <section class="addbox" style="padding:14px">
     <p class="fine" style="margin-bottom:10px">Enter it once. After your next change it is saved without a password.</p>
     <label class="f wide">Password<input id="u-pw" type="password" autocomplete="current-password"></label>
@@ -347,7 +347,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   </section>
 </div>
 <div id="setup" class="wrap" hidden>
-  <header class="top"><div><h1>Cactus Stock</h1><p class="sub">Choose the spreadsheet this list lives in.</p></div></header>
+  <header class="top"><div><h1>SP Inventory</h1><p class="sub">Choose the spreadsheet this list lives in.</p></div></header>
   <section class="addbox" style="padding:14px">
     <p style="font-size:15px">Pick the Excel file in your shared cloud folder (OneDrive, Google Drive, Dropbox or SharePoint, synced to this computer). Everyone who uses the app picks the same file.</p>
     <p class="fine" style="margin-top:8px">First time ever? Tap “Make a new spreadsheet” and save it inside the shared cloud folder. Then everyone else taps “Open the shared spreadsheet” and picks it.</p>
@@ -359,7 +359,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>Cactus Stock</h1>
+      <h1>SP Inventory</h1>
       <p class="sub" id="sub">Loading your plants…</p>
     </div>
     <button class="btn small" id="sharebtn" type="button" hidden>File: <span id="fname"></span></button>
@@ -1280,7 +1280,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+rows+'</sheetData><autoFilter ref="A1:O'+last+'"/></worksheet>';
   }
   function sumXml(list){
-    var rows='<row r="1" ht="26" customHeight="1">'+cStr(1,0,'Stock summary',4)+'</row><row r="3">';
+    var rows='<row r="1" ht="26" customHeight="1">'+cStr(1,0,'SP Inventory summary',4)+'</row><row r="3">';
     ['Category','Lines','In stock','Value at cost','Value at sale','Profit if sold','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
     rows+='</row>';
     var by={},order=[];
@@ -1336,7 +1336,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       soldRevX:[],id:['id (do not edit)'],onOrderHow:['order how'],snoozedQty:['snoozed at'],bundled:['sold with plants'],example:['example']};
     function hnorm(v){return String(v==null?'':v).toLowerCase().replace(/\s+/g,' ').trim()}
     var synIdx={};Object.keys(SYN).forEach(function(k){SYN[k].forEach(function(w){synIdx[w]=k})});
-    /* the same reading rules as Import: exact Cactus Stock headings first, then common wordings */
+    /* the same reading rules as Import: exact SP Inventory headings first, then common wordings */
     function headKey(v){
       var x=hnorm(v);if(!x)return null;if(synIdx[x])return synIdx[x];
       if(/value|profit|total|worth|margin|status/.test(x))return null;
@@ -2205,7 +2205,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   async function pickNew(){
     var file;
     if(IS_NATIVE){var p=await window.cactusNative.create();if(!p)return null;file=nativeFile(p)}
-    else{var h=await window.showSaveFilePicker({suggestedName:'Cactus Stock.xlsx',types:XLTYPES});file=fsaFile(h)}
+    else{var h=await window.showSaveFilePicker({suggestedName:'SP Inventory.xlsx',types:XLTYPES});file=fsaFile(h)}
     F=file;rawList=[];await saveRaw();return file;
   }
   async function startWith(file){
@@ -2259,7 +2259,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       await loadFresh();
       if(!fileFmt.isApp){convertOk=false;throw new Error('The converted file could not be checked.')}
       convertOk=false;$('convert').hidden=true;
-      await startWith(F);say('Converted. Your list is now in Cactus Stock’s layout.'+note);
+      await startWith(F);say('Converted. Your list is now in SP Inventory’s layout.'+note);
     }catch(e){convertOk=false;$('cv-msg').textContent='Could not convert: '+((e&&e.message)||'')+' Nothing was lost.';$('cv-go').disabled=false}
   });
   function fmtTime(d){return d?d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'—'}
