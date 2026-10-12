@@ -58,12 +58,20 @@ ipcMain.handle('read', async (e, p) => {
   if (st.size > 50 * 1024 * 1024) throw new Error('That file is too big to be a stock list.');
   return { bytes: await fs.promises.readFile(f), mtime: st.mtimeMs };
 });
-/* Before converting a spreadsheet the app did not make, keep an untouched copy next to it. */
+/* Backup copy: "<file name> backup <date> <time>.xlsx" in a "Backups" folder next to the spreadsheet. */
+function stamp() {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + h + '-' + p(d.getMinutes()) + ' ' + ap;
+}
 ipcMain.handle('backup', async (e, p) => {
   if (!fromOurPage(e)) throw new Error('Not allowed.');
   const f = check(p);
-  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-  const dest = path.join(path.dirname(f), path.basename(f, path.extname(f)) + ' (backup ' + stamp + ').xlsx');
+  const dir = path.join(path.dirname(f), 'Backups');
+  await fs.promises.mkdir(dir, { recursive: true });
+  const base = path.basename(f, path.extname(f)) + ' backup ' + stamp();
+  let dest = path.join(dir, base + '.xlsx'), n = 2;
+  while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ').xlsx'); } catch (err) { break; } }
   await fs.promises.copyFile(f, dest, fs.constants.COPYFILE_EXCL);
   return path.basename(dest);
 });
