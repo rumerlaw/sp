@@ -63,4 +63,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # Remove downloads left over from the old app name.
+          gh release view latest --json assets -q '.assets[].name' | grep -v '^SP\.Inventory' | while read -r f; do gh release delete-asset latest "$f" -y; done
           gh release edit latest --title "SP Inventory downloads" --notes "$(printf 'Newest version, built %s.\n\n**Mac (newer, Apple M1/M2/M3...):** the file ending in -arm64.dmg\n**Mac (older, Intel):** the other .dmg\n**Windows:** the .exe (runs without installing)\n\nThe first time on Mac: System Settings > Privacy & Security > Open Anyway. On Windows: More info > Run anyway.' "$(date -u '+%Y-%m-%d %H:%M UTC')")"
