@@ -1200,6 +1200,22 @@ select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       id:['id (do not edit)'],onOrderHow:['order how'],snoozedQty:['snoozed at'],bundled:['sold with plants'],example:['example']};
     function hnorm(v){return String(v==null?'':v).toLowerCase().replace(/\s+/g,' ').trim()}
     var synIdx={};Object.keys(SYN).forEach(function(k){SYN[k].forEach(function(w){synIdx[w]=k})});
+    /* the same reading rules as Import: exact Cactus Stock headings first, then common wordings */
+    function headKey(v){
+      var x=hnorm(v);if(!x)return null;if(synIdx[x])return synIdx[x];
+      if(/value|profit|total|worth|margin|status/.test(x))return null;
+      if(/sold price|price sold|sold at/.test(x))return null;
+      if(/vendor|supplier|nursery|bought from|\bseller\b|\bsource\b/.test(x))return 'vendor';
+      if(/remind|reorder/.test(x))return 'reorderAt';
+      if(/\bsold\b|units sold|sales qty/.test(x))return 'soldQty';
+      if(/sell|sale|retail|selling/.test(x))return 'price';
+      if(/cost|paid|purchase|buy|wholesale/.test(x))return 'cost';
+      if(/price/.test(x))return 'price';
+      if(/qty|quantity|stock|count|how many|amount|units|^no\.?$/.test(x))return 'qty';
+      if(/genus|latin|scientific|size|type|species/.test(x))return 'genus';
+      if(/name|cactus|plant|\bpots?\b|item|product|variety/.test(x))return 'name';
+      return null;
+    }
     by.isApp=false;by.hasContent=false;
     var seen={};
     for(var si=0;si<sheets.length;si++){
@@ -1223,7 +1239,7 @@ select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       for(var hr=1;hr<=Math.min(maxR,15);hr++){
         var hrow=rows[hr];if(!hrow)continue;
         var m={},score=0;
-        Object.keys(hrow).forEach(function(ci){var k=synIdx[hnorm(hrow[ci])];if(k&&m[k]==null){m[k]=Number(ci);score++}});
+        Object.keys(hrow).forEach(function(ci){var k=headKey(hrow[ci]);if(k&&m[k]==null){m[k]=Number(ci);score++}});
         if(m.name!=null&&score>=2&&score>best){best=score;hdr=hr;map=m}
       }
       if(!map)continue;
@@ -1234,7 +1250,7 @@ select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
         var g=function(k){return map[k]==null?null:(row[map[k]]===undefined?null:row[map[k]])};
         var nm=g('name');if(nm==null)continue;
         nm=String(nm).trim();
-        if(!nm||nm.length>80||/^totals?$/i.test(nm)||/^example\b/i.test(nm)||synIdx[hnorm(nm)]==='name')continue;
+        if(!nm||nm.length>80||/^(grand\s+)?(totals?|sum|subtotal)\b/i.test(nm)||/^example\b/i.test(nm)||headKey(nm)==='name'&&hnorm(nm)===hnorm(row[map.name]==null?'':rows[hdr][map.name]))continue;
         var id=g('id');id=id==null||String(id).trim()===''?slug(nm):String(id).trim();
         var base=id,k2=2;while(seen[id])id=base+'-'+(k2++);seen[id]=1;
         var num=function(k,d){var v=g(k);if(v===null||v==='')return d;var n=Number(String(v).replace(/[$,\s]/g,''));return isFinite(n)?n:d};
