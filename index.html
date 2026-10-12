@@ -425,6 +425,8 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     <div class="tools">
       <input id="q" type="search" placeholder="Search" aria-label="Search products">
       <select id="sort" aria-label="Order the plants">
+        <option value="plants">Plants first</option>
+        <option value="products">Products first</option>
         <option value="name">Name A–Z</option>
         <option value="category">Category A–Z</option>
         <option value="genus">Genus A–Z</option>
@@ -449,7 +451,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   var fmt=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
   var money=function(n){return fmt.format(Number(n)||0)};
   var h=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
-  var db=null,sampleFn=null,dlApi=null,canWrite=true,loaded=false,items=[],allItems=[],cat='all',pending=null,edit=null,delAsk=null,view='cards',query='',autoOpened=false,qtyDraft={},pauseTimer=null,sortMode='name',collate=new Intl.Collator(undefined,{sensitivity:'base',numeric:true});
+  var db=null,sampleFn=null,dlApi=null,canWrite=true,loaded=false,items=[],allItems=[],cat='all',pending=null,edit=null,delAsk=null,view='cards',query='',autoOpened=false,qtyDraft={},pauseTimer=null,sortMode='plants',collate=new Intl.Collator(undefined,{sensitivity:'base',numeric:true});
 
   var WORDS={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,fifteen:15,twenty:20,thirty:30,fifty:50};
   function qtyOf(w){w=String(w||'').toLowerCase();if(/^\d+$/.test(w))return parseInt(w,10);return WORDS[w]||NaN}
@@ -699,6 +701,10 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   function sorted(){
     var byName=function(a,b){return collate.compare(a.name,b.name)};
     return items.slice().sort(function(a,b){
+      if(sortMode==='plants'||sortMode==='products'){
+        var pa=catKey(a.category)==='plant'?0:1,pb=catKey(b.category)==='plant'?0:1;if(sortMode==='products'){pa=1-pa;pb=1-pb}
+        return (pa-pb)||collate.compare(a.category||'',b.category||'')||byName(a,b);
+      }
       if(sortMode==='category')return collate.compare(a.category||'',b.category||'')||byName(a,b);
       if(sortMode==='genus'){
         var ga=a.genus||'',gb=b.genus||'';
@@ -2175,11 +2181,11 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   });
   try{var sv=localStorage.getItem('cactus-view');if(sv==='cards'||sv==='sheet')view=sv}catch(e){}
   syncView();applyCat();
-  try{var so=localStorage.getItem('cactus-sort');if(so==='name'||so==='category'||so==='genus'||so==='low'||so==='most')sortMode=so}catch(e){}
+  try{var so=localStorage.getItem('sp-sort');if(so==='plants'||so==='products'||so==='name'||so==='category'||so==='genus'||so==='low'||so==='most')sortMode=so}catch(e){}
   $('sort').value=sortMode;
   $('sort').addEventListener('change',function(){
     sortMode=$('sort').value;
-    try{localStorage.setItem('cactus-sort',sortMode)}catch(e){}
+    try{localStorage.setItem('sp-sort',sortMode)}catch(e){}
     render();
   });
 
