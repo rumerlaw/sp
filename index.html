@@ -798,18 +798,19 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   function catTotals(){
     var by={},order=[];
     allItems.forEach(function(it){
-      var k=catKey(it.category);if(!by[k]){by[k]={n:it.category||'Other',q:0,vc:0,vs:0,sq:0,pr:0};order.push(k)}
-      var o=by[k];o.q+=it.qty;o.vc+=it.qty*it.cost;o.vs+=it.qty*it.price;o.sq+=it.soldQty;o.pr+=it.soldRev-it.soldCost;
+      var k=catKey(it.category);if(!by[k]){by[k]={n:it.category||'Other',sq:0,sc:0,pr:0};order.push(k)}
+      var o=by[k];o.sq+=it.soldQty;o.sc+=it.soldCost;o.pr+=it.soldRev-it.soldCost;
     });
     return order.map(function(k){return by[k]}).sort(function(a,b){return collate.compare(a.n,b.n)});
   }
   function allCard(){
-    var rows=catTotals(),T={q:0,vc:0,vs:0,sq:0,pr:0};
-    rows.forEach(function(o){['q','vc','vs','sq','pr'].forEach(function(f){T[f]+=o[f]})});
-    function row(o,b){return '<tr'+(b?' class="tot"':'')+'><td>'+h(o.n)+'</td><td>'+hv('qty',o.q.toLocaleString())+'</td><td>'+hv('vc',money(o.vc))+'</td><td>'+hv('vs',money(o.vs))+'</td><td>'+o.sq.toLocaleString()+'</td><td class="pos">'+hv('profit',money(o.pr))+'</td></tr>'}
-    return '<details class="soldcard" id="alld"'+(allOpen?' open':'')+'><summary><span class="st">By category</span> <span class="ss">'+rows.length+(rows.length===1?' category':' categories')+'</span></summary>'+
-      '<div class="grid">'+stat('In stock',T.q.toLocaleString(),false)+stat('Value at cost',money(T.vc),false)+stat('Value at sale',money(T.vs),false)+stat('Profit from sales',money(T.pr),false)+'</div>'+
-      '<div class="tw"><table><tr><th>Category</th><th>In stock</th><th>Value at cost</th><th>Value at sale</th><th>Sold</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',q:T.q,vc:T.vc,vs:T.vs,sq:T.sq,pr:T.pr},true):'')+'</table></div></details>';
+    var rows=catTotals(),T={sq:0,sc:0,pr:0};
+    rows.forEach(function(o){T.sq+=o.sq;T.sc+=o.sc;T.pr+=o.pr});
+    function row(o,b){return '<tr'+(b?' class="tot"':'')+'><td>'+h(o.n)+'</td><td>'+o.sq.toLocaleString()+'</td><td>'+hv('cost',money(o.sc))+'</td><td class="pos">'+hv('profit',money(o.pr))+'</td></tr>'}
+    return '<details class="soldcard" id="alld"'+(allOpen?' open':'')+'><summary><span class="st">By category</span> <span class="ss">Profit '+(hideF.profit?'•••':money(T.pr))+'</span></summary>'+
+      '<div class="grid">'+stat('Sold',T.sq.toLocaleString(),false)+stat('Bought at',money(T.sc),false)+stat('Profit',money(T.pr),false)+'</div>'+
+      '<div class="tw"><table><tr><th>Category</th><th>Sold</th><th>Bought at</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',sq:T.sq,sc:T.sc,pr:T.pr},true):'')+'</table></div>'+
+      '<p class="fine" style="margin-top:8px">Bought at is what you paid for the ones you sold.</p></details>';
   }
   function soldCard(list){
     var rows=list.filter(function(it){return it.soldQty>0});
