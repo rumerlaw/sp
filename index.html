@@ -496,12 +496,32 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   /* ---------- categories ---------- */
   function catKey(c){return String(c||'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/(es|s)$/,'')}
   function knownCats(){var seen={},out=[];allItems.forEach(function(i){var c=String(i.category||'').trim();if(c&&!seen[catKey(c)]){seen[catKey(c)]=1;out.push(c)}});return out}
+  var PRODUCT_CATS=[
+    [/^(pots?|planters?|containers?|saucers?)$/,'Pots'],
+    [/^(candles?|tealights?|votives?|wax|melts?)$/,'Candles'],
+    [/^(wines?|merlot|cabernet|chardonnay|pinot|riesling|rose|rosé|prosecco|champagne|moscato|malbec|sauvignon|zinfandel|sangria)$/,'Wine'],
+    [/^(beers?|ales?|lagers?|ipas?|ciders?|stouts?|seltzers?)$/,'Beer'],
+    [/^(liquor|whiskey|whisky|vodka|tequila|rum|gin|bourbon|mezcal)$/,'Liquor'],
+    [/^(cups?|mugs?|tumblers?|glass|glasses|goblets?|flutes?)$/,'Cups'],
+    [/^(soil|mix|potting|perlite|pumice|fertili[sz]ers?|gravel|rocks?|stones?|sand|mulch)$/,'Soil & Supplies'],
+    [/^(soaps?|lotions?|balms?|scrubs?|bombs?|shampoos?)$/,'Bath & Body'],
+    [/^(shirts?|t-shirts?|tees?|hoodies?|hats?|caps?|socks?|sweatshirts?|jackets?|aprons?)$/,'Clothing'],
+    [/^(earrings?|necklaces?|rings?|bracelets?|pendants?|jewel(?:le)?ry|charms?)$/,'Jewelry'],
+    [/^(stickers?|magnets?|pins?|patches?|keychains?)$/,'Stickers & Pins'],
+    [/^(cards?|postcards?|prints?|posters?|paintings?|canvas|art)$/,'Art & Cards'],
+    [/^(books?|journals?|notebooks?)$/,'Books'],
+    [/^(coffee|tea|teas)$/,'Coffee & Tea'],
+    [/^(candy|candies|chocolates?|snacks?|cookies?|jams?|honey|sauces?)$/,'Food'],
+    [/^(toys?|plush|puzzles?|games?)$/,'Toys'],
+    [/^(seeds?|bulbs?)$/,'Seeds']];
   function guessCategory(name,genus){
-    var t=String(name||'').toLowerCase();
-    if(genus||guessGenus(name)||/\b(cact|cacti|succulent|plant|seedling|cutting)/.test(t))return 'Plants';
-    if(/\b(pots?|planters?|containers?)\b/.test(t))return 'Pots';
-    var words=t.replace(/[^a-z ]+/g,' ').trim().split(/\s+/).filter(Boolean),ks=knownCats();
+    var t=String(name||'').toLowerCase(),words=t.replace(/[^a-z\- ]+/g,' ').trim().split(/\s+/).filter(Boolean);
+    /* an existing category named in the product's name wins */
+    var ks=knownCats();
     for(var i=words.length-1;i>=0;i--){var wk=catKey(words[i]);for(var j=0;j<ks.length;j++)if(catKey(ks[j])===wk)return ks[j]}
+    /* the last product word decides: "wine glass" is a cup, "cactus mug" is a cup, "6 inch pots" are pots */
+    for(var a=words.length-1;a>=0;a--)for(var b=0;b<PRODUCT_CATS.length;b++)if(PRODUCT_CATS[b][0].test(words[a]))return PRODUCT_CATS[b][1];
+    if(genus||guessGenus(name)||/\b(cact|cacti|succulent|plant|seedling|cutting)/.test(t))return 'Plants';
     var last=words[words.length-1]||'';
     if(!last||last.length<3)return 'Other';
     var pl=/s$/.test(last)?last:(/(x|ch|sh)$/.test(last)?last+'es':last+'s');
@@ -551,7 +571,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     }
     return out.join('');
   }
-  var DONTFIX=' post most lost host best rest test past fast cast mist list just dust west east coast boat coat goat root roots pots pot plant plants cacti cactus large small color white black blue red pink green yellow orange purple golden barrel torch ';
+  var DONTFIX=' post most lost host best rest test past fast cast mist list just dust west east coast boat coat goat root roots pots pot plant plants cacti cactus large small color white black blue red pink green yellow orange purple golden barrel torch wine wines vine vines mine pine line fine dine cup cups mug mugs candle candles soil hat hats cap caps tea set sets bag bags box boxes card cards ';
   function fixTypos(text){
     text=String(text).replace(/\bsel\b/gi,'sell').replace(/\bsld\b/gi,'sold').replace(/\bselling\s+fo\b/gi,'selling for');
     var plant={};
@@ -986,9 +1006,9 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       if(lo&&/^[a-z' ‘’-]+$/i.test(lo)&&lo.split(' ').length<=10&&!/^(?:more|extra|some|it|ones?|plants?|other)$/i.test(lo))name=lo;
     }
     var rest=before.replace(qm[0],' ');
-    var cm=rest.match(new RegExp('(for|paid|at|cost(?:ing|s)?)\\s+\\$?(\\d+(?:\\.\\d+)?)\\s*'+MONEY+'?(\\s+(?:each|apiece|a piece|per plant))?','i'));
+    var cm=rest.match(new RegExp('(for|paid|at|cost(?:ing|s)?)\\s+\\$?(\\d+(?:\\.\\d+)?)(?:\\s*'+MONEY+')?(\\s+(?:each|apiece|a piece|per plant|per item|per one|ea))?','i'));
     var cost=null,total=null;
-    if(cm){var v=parseFloat(cm[2]);if(cm[3]||/^at$/i.test(cm[1])){cost=v}else{total=v;cost=v/q}}
+    if(cm){var v=parseFloat(cm[2]);if(cm[3]||/^cost/i.test(cm[1])){cost=v}else{total=v;cost=v/q}}
     else if(rest.match(/\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*(?:each|apiece|a piece|ea)\b/i)){cost=parseFloat(rest.match(/\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*(?:each|apiece|a piece|ea)\b/i)[1])}
     else{var bn=rest.match(/(?:^|[^\d.$])\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*$/i);if(bn){total=parseFloat(bn[1]);cost=total/q}}
     var pm=after.match(/\$?(\d+(?:\.\d+)?)/);
@@ -1189,7 +1209,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var nm=title(r.name);
     var note=(r.cost==null||r.price==null)?' No price heard for one or both, so they start at $0.00. You can set them in the spreadsheet or with Edit.':'';
     var gN=r.genus?genusText(r.genus):(guessGenus(nm)||'');
-    return {kind:'new',costTotal:r.costTotal!=null?r.costTotal:null,name:nm,genus:gN,category:r.category||(cat!=='all'?cat:guessCategory(nm,gN)),vendor:r.vendor||'',qty:r.qty,cost:r.cost||0,price:r.price||0,
+    return {kind:'new',costTotal:r.costTotal!=null?r.costTotal:null,name:nm,genus:gN,category:r.category||guessCategory(nm,gN),vendor:r.vendor||'',qty:r.qty,cost:r.cost||0,price:r.price||0,
       text:(sepLine?'New separate line: ':'New: ')+nm+(r.genus?' ('+genusText(r.genus)+')':'')+(r.vendor?' from '+r.vendor:'')+', '+r.qty+' in stock, cost '+money(r.cost||0)+' each'+(r.costTotal!=null?' ('+money(r.costTotal)+' for all '+r.qty+')':'')+', sells '+money(r.price||0)+' each.'+note};
   }
 
@@ -1754,6 +1774,11 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     syncUndo();render();
   }
   async function apply(p){
+    if(p.kind==='delmany'){
+      for(var di=0;di<p.ids.length;di++){var did=p.ids[di];await guard(function(){return ref(did).delete()})}
+      pending=null;$('confirm').innerHTML='';$('say').value='';edit=null;delAsk=null;
+      say('Deleted '+p.label+'.');render();return;
+    }
     if(p.kind==='reorder'){
       var rn0=p.n,inp0=p.how==='inperson';
       var pt=inp0?{qty:p.item.qty+rn0,onOrder:0,snoozedQty:null,reorderQty:rn0}:{onOrder:rn0,onOrderHow:'order',snoozedQty:null,reorderQty:rn0};
@@ -1850,6 +1875,28 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     pending={kind:'reorder',item:it,how:how,n:n,text:inP?('I have it: add '+n+' '+it.name+'. Stock goes from '+it.qty+' to '+(it.qty+n)+'.'):('I’ll get some: '+n+' '+it.name+' marked as on order.')};
     $('confirm').innerHTML='<div class="confirm"><strong>'+h(pending.text)+'</strong><div class="row"><button class="btn primary" data-act="yes">Yes, save it</button><button class="btn" data-act="no">No, cancel</button></div></div>';
   }
+  /* "delete pots": a product (all its lines), or else a whole category - always asks first */
+  function askDelete(what){
+    var w=encSizes(what);w=decSizes(w).trim();
+    var hit=find0(w),lines=hit?sameLines(hit):[],label='';
+    if(lines.length){label=lines[0].name+(lines.length>1?' (all '+lines.length+' lines)':'')}
+    else{
+      lines=allItems.filter(function(i){return catKey(i.category)===catKey(w)});
+      if(lines.length)label='everything in '+lines[0].category+' ('+lines.length+(lines.length===1?' product':' products')+')';
+    }
+    if(!lines.length){say('I could not find “'+what+'” to delete.',true);return}
+    var q=lines.reduce(function(a,i){return a+i.qty},0);
+    var inCatAll=hit?allItems.filter(function(i){return catKey(i.category)===catKey(w)}):[];
+    pending={kind:'delmany',ids:lines.map(function(i){return i.id}),label:label};
+    say('');
+    if(inCatAll.length>lines.length){
+      var cq=inCatAll.reduce(function(a,i){return a+i.qty},0),cl='everything in '+inCatAll[0].category+' ('+inCatAll.length+' products)';
+      pending.alt={ids:inCatAll.map(function(i){return i.id}),label:cl};
+      $('confirm').innerHTML='<div class="confirm"><strong>Delete which?</strong><div class="row"><button class="btn bloom" data-act="yes">Just '+h(label)+' ('+q+' in stock)</button><button class="btn bloom" data-act="delcat">Everything in '+h(inCatAll[0].category)+' ('+inCatAll.length+' products, '+cq+' in stock)</button><button class="btn" data-act="no">Keep it</button></div><p class="fine">You can undo this.</p></div>';
+      return;
+    }
+    $('confirm').innerHTML='<div class="confirm"><strong>Delete '+h(label)+'? '+q+' in stock.</strong><div class="row"><button class="btn bloom" data-act="yes">Yes, delete</button><button class="btn" data-act="no">Keep it</button></div><p class="fine">You can undo this.</p></div>';
+  }
   var viaEnter=false;
   async function runCheck(fromPause){
     var enterSave=viaEnter;viaEnter=false;
@@ -1857,6 +1904,8 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     if($('go').disabled)return;
     var t=$('say').value.trim();
     if(!t){if(!fromPause)say('Say or type something first.',true);return}
+    var dm=t.match(/^(?:please\s+)?(?:delete|remove|get rid of|erase|take out)\s+(?:all\s+)?(?:of\s+)?(?:the\s+|my\s+)?(.+?)[.!]?$/i);
+    if(dm&&db&&canWrite){askDelete(dm[1]);return}
     var ra=reorderAnswer(t);
     if(ra&&db&&canWrite){
       if(!ra.item){say('Which plant? Say its name, for example “get bunny ears in person”.',true);return}
@@ -1930,7 +1979,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var N=function(v){return Math.max(0,Number(v)||0)};
     var ra=$('a-ra').value===''?1:Math.round(N($('a-ra').value));
     var gA=genusText($('a-genus').value||sp.sci)||guessGenus(nm);
-    var doc={name:nm,category:String($('a-cat').value||'').trim()||(cat!=='all'?cat:guessCategory(nm,gA)),genus:gA,vendor:vA,cost:N($('a-cost').value),price:N($('a-price').value),qty:Math.round(N($('a-qty').value)),reorderAt:ra,reorderQty:10,onOrder:0,snoozedQty:null};
+    var doc={name:nm,category:String($('a-cat').value||'').trim()||guessCategory(nm,gA),genus:gA,vendor:vA,cost:N($('a-cost').value),price:N($('a-price').value),qty:Math.round(N($('a-qty').value)),reorderAt:ra,reorderQty:10,onOrder:0,snoozedQty:null};
     if(await guard(function(){return ref(freshId(nm)).set(doc)})){
       say('Saved. '+nm+' added with '+doc.qty+' in stock.');
       $('addform').reset();$('a-ra').value='1';$('a-name').focus();
@@ -1989,6 +2038,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var act=b.getAttribute('data-act'),id=b.getAttribute('data-id');
     var it=allItems.filter(function(i){return i.id===id})[0];
     if(act==='yes'){if(pending){b.disabled=true;await apply(pending)}return}
+    if(act==='delcat'){if(pending&&pending.alt){b.disabled=true;await apply({kind:'delmany',ids:pending.alt.ids,label:pending.alt.label})}return}
     if(act==='quickadd'){
       if(!pending||pending.kind!=='quickadd')return;
       var qn=Math.round(Number(($('qa-q')||{}).value));
