@@ -2,6 +2,12 @@ const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electro
 const path = require('path');
 const fs = require('fs');
 
+const os = require('os');
+/* --smoke-test: used only by the build machine to prove the finished app really works
+   (opens a spreadsheet, records stock, saves, backs up, reopens) before it is published. */
+const SMOKE = process.argv.includes('--smoke-test');
+const SMOKE_DIR = path.join(os.tmpdir(), 'sp-smoke-' + process.pid);
+const SMOKE_XLSX = path.join(SMOKE_DIR, 'Smoke Test.xlsx');
 const FILTERS = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
 
 /* The app may only touch spreadsheet files the person picked themselves in a file dialog.
@@ -45,18 +51,58 @@ function createWindow() {
   win.webContents.on('will-navigate', (e, url) => { e.preventDefault(); if (/^https:\/\//i.test(url)) shell.openExternal(url); });
   win.webContents.on('will-redirect', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  if (SMOKE) runSmokeTest(win);
   win.loadFile('index.html');
-  if (process.argv.includes('--smoke-test')) {
-    const report = (m) => { console.log(m); if (process.env.SP_SMOKE_FILE) { try { fs.writeFileSync(process.env.SP_SMOKE_FILE, m); } catch (err) {} } };
-    /* Used by the build to prove the finished app starts and its file bridge is in place. */
-    win.webContents.once('did-finish-load', async () => {
-      let ok = false;
-      try { ok = await win.webContents.executeJavaScript("typeof window.cactusNative === 'object' && typeof require === 'undefined' && typeof process === 'undefined'"); } catch (err) {}
-      report(ok ? 'SMOKE TEST OK' : 'SMOKE TEST FAILED'); app.exit(ok ? 0 : 1);
-    });
-    setTimeout(() => { report('SMOKE TEST TIMED OUT'); app.exit(1); }, 60000);
-  }
   return win;
+}
+
+function runSmokeTest(win) {
+  const lines = [];
+  const report = (ok) => {
+    const m = lines.join('\n') + '\n' + (ok ? 'SMOKE TEST OK' : 'SMOKE TEST FAILED');
+    console.log(m); if (process.env.SP_SMOKE_FILE) { try { fs.writeFileSync(process.env.SP_SMOKE_FILE, m); } catch (err) {} }
+    app.exit(ok ? 0 : 1);
+  };
+  const wc = win.webContents, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const js = (code) => wc.executeJavaScript(code, true);
+  const until = async (code, what, ms = 20000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await js(code)) return; } catch (e) {} await wait(250); } throw new Error('Gave up waiting for ' + what); };
+  const check = (cond, label) => { lines.push((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) throw new Error(label); };
+  const loaded = () => new Promise((r) => wc.once('did-finish-load', r));
+  const say = async (text) => {
+    await js("(function(){var s=document.getElementById('say');s.value='';s.focus();return true})()");
+    await wc.insertText(text);
+    wc.sendInputEvent({ type: 'keyDown', keyCode: 'Return' }); wc.sendInputEvent({ type: 'char', keyCode: '\r' }); wc.sendInputEvent({ type: 'keyUp', keyCode: 'Return' });
+    await wait(2500);
+    return js("(document.getElementById('msg')||{}).innerText||''");
+  };
+  setTimeout(() => { lines.push('TIMED OUT'); report(false); }, 150000);
+  (async () => {
+    await loaded();
+    check(await js("typeof window.cactusNative==='object'&&typeof require==='undefined'&&typeof process==='undefined'"), 'page is sandboxed and the file bridge is there');
+    await until("!!document.getElementById('f-new')&&!!document.getElementById('f-new').offsetParent", 'the start screen');
+    await js("document.getElementById('f-new').click()");
+    await until("!!document.getElementById('say')", 'the main screen');
+    await js("(function(){var b=document.querySelector('[data-mode=type]');if(b)b.click();return true})()");
+    await until("!!document.getElementById('say').offsetParent", 'the typing box');
+    let m = await say('bought 6 candles at 18 sell for 10 each');
+    check(/Saved/i.test(m) && /Candles/.test(m), 'typed purchase saved: ' + m.trim());
+    m = await say('sold 2 candles');
+    check(/Saved/i.test(m) && /down to 4/.test(m), 'typed sale saved: ' + m.trim());
+    const buf = fs.readFileSync(SMOKE_XLSX);
+    check(buf.length > 1000 && buf[0] === 0x50 && buf[1] === 0x4b, 'spreadsheet written to disk (' + buf.length + ' bytes)');
+    const bdir = path.join(SMOKE_DIR, 'Backups');
+    const backups = fs.existsSync(bdir) ? fs.readdirSync(bdir) : [];
+    check(backups.length === 1, 'exactly one backup this session: ' + backups.join(', '));
+    check(fs.readdirSync(SMOKE_DIR).every((f) => !/\.saving-/.test(f)), 'no half-written temp files left');
+    const other = path.join(SMOKE_DIR, 'Not Picked.xlsx'); fs.copyFileSync(SMOKE_XLSX, other);
+    check(await js("window.cactusNative.read(" + JSON.stringify(other) + ").then(function(){return false},function(){return true})"), 'a file you did not pick cannot be read');
+    check(await js("fetch('https://example.com/').then(function(){return false},function(){return true})"), 'internet requests are blocked');
+    const re = loaded(); wc.reload(); await re;
+    await until("/Candles/.test(document.getElementById('list').innerText)", 'the list after reopening');
+    const txt = await js("document.getElementById('list').innerText");
+    check(/\b4\b/.test(txt), 'reopened the spreadsheet and it shows 4 candles left');
+    report(true);
+  })().catch((err) => { lines.push('ERROR ' + (err && err.message)); report(false); });
 }
 
 ipcMain.handle('open', async (e) => {
@@ -67,6 +113,7 @@ ipcMain.handle('open', async (e) => {
 });
 ipcMain.handle('create', async (e) => {
   if (!fromOurPage(e)) return null;
+  if (SMOKE) { fs.mkdirSync(SMOKE_DIR, { recursive: true }); allow(SMOKE_XLSX); return SMOKE_XLSX; }
   const r = await dialog.showSaveDialog({ defaultPath: 'SP Inventory.xlsx', filters: FILTERS });
   if (r.canceled) return null;
   let p = r.filePath; if (!/\.xlsx$/i.test(p)) p += '.xlsx';
