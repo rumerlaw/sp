@@ -101,7 +101,7 @@ function runSmokeTest(win) {
     check(buf.length > 1000 && buf[0] === 0x50 && buf[1] === 0x4b, 'spreadsheet written to disk (' + buf.length + ' bytes)');
     const bdir = path.join(SMOKE_DIR, 'Backups');
     const backups = fs.existsSync(bdir) ? fs.readdirSync(bdir) : [];
-    check(backups.length === 1, 'exactly one backup this session: ' + backups.join(', '));
+    check(backups.length === 1 && / before\.xlsx$/.test(backups[0]), 'one "before" backup at the first change: ' + backups.join(', '));
     check(fs.readdirSync(SMOKE_DIR).every((f) => !/\.saving-/.test(f)), 'no half-written temp files left');
     const other = path.join(SMOKE_DIR, 'Not Picked.xlsx'); fs.copyFileSync(SMOKE_XLSX, other);
     check(await js("window.cactusNative.read(" + JSON.stringify(other) + ").then(function(){return false},function(){return true})"), 'a file you did not pick cannot be read');
@@ -110,6 +110,11 @@ function runSmokeTest(win) {
     await until("/Candles/.test(document.getElementById('list').innerText)", 'the list after reopening');
     const txt = await js("document.getElementById('list').innerText");
     check(/\b4\b/.test(txt), 'reopened the spreadsheet and it shows 4 candles left');
+    const made = await afterBackups();
+    const all = fs.readdirSync(bdir).filter((x) => !/^\./.test(x));
+    check(made.length === 1 && all.length === 2 && all.some((x) => / after\.xlsx$/.test(x)), 'closing makes an "after" backup with the changes: ' + all.join(', '));
+    const ab = fs.readFileSync(path.join(bdir, made[0]));
+    check(ab.equals(fs.readFileSync(SMOKE_XLSX)), 'the "after" backup matches the saved spreadsheet');
     report(true);
   })().catch(async (err) => {
     lines.push('ERROR ' + (err && err.message));
@@ -169,7 +174,7 @@ ipcMain.handle('backup', async (e, p, bytes) => {
   }
   const dir = path.join(path.dirname(f), 'Backups');
   await fs.promises.mkdir(dir, { recursive: true });
-  const base = path.basename(f, path.extname(f)) + ' backup ' + stamp();
+  const base = path.basename(f, path.extname(f)) + ' backup ' + stamp() + ' before';
   let dest = path.join(dir, base + ext), n = 2;
   while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ')' + ext); } catch (err) { break; } }
   if (data) await fs.promises.writeFile(dest, data, { flag: 'wx' });
@@ -185,8 +190,35 @@ ipcMain.handle('write', async (e, p, bytes) => {
   if (buf.length > 50 * 1024 * 1024 || buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error('That is not a spreadsheet.');
   const tmp = f + '.saving-' + process.pid;
   await fs.promises.writeFile(tmp, buf);
-  try { await fs.promises.rename(tmp, f); }
+  try { await fs.promises.rename(tmp, f); written.add(f); }
   catch (err) { try { await fs.promises.unlink(tmp); } catch (e2) {} throw err; }
+});
+
+/* When the app closes, every spreadsheet changed in this session gets a second backup with all the changes:
+   "<file name> backup <date> <time> after.xlsx". With the "before" copy, both sides of the session are kept. */
+const written = new Set();
+async function afterBackups() {
+  const made = [];
+  for (const f of [...written]) {
+    try {
+      const dir = path.join(path.dirname(f), 'Backups');
+      await fs.promises.mkdir(dir, { recursive: true });
+      const base = path.basename(f, path.extname(f)) + ' backup ' + stamp() + ' after';
+      let dest = path.join(dir, base + '.xlsx'), n = 2;
+      while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ').xlsx'); } catch (err) { break; } }
+      await fs.promises.copyFile(f, dest, fs.constants.COPYFILE_EXCL);
+      made.push(path.basename(dest));
+    } catch (err) {}
+    written.delete(f);
+  }
+  return made;
+}
+let quitting = false;
+app.on('before-quit', (e) => {
+  if (quitting || !written.size) return;
+  e.preventDefault(); quitting = true;
+  const t = setTimeout(() => app.quit(), 15000);
+  afterBackups().finally(() => { clearTimeout(t); app.quit(); });
 });
 
 /* Only one copy of the app runs at a time, so two windows never save over each other. */
