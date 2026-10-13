@@ -150,15 +150,30 @@ function stamp() {
   let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + h + '-' + p(d.getMinutes()) + ' ' + ap;
 }
-ipcMain.handle('backup', async (e, p) => {
+ipcMain.handle('backup', async (e, p, bytes) => {
   if (!fromOurPage(e)) throw new Error('Not allowed.');
   const f = check(p);
+  /* With bytes: the spreadsheet as the app read it, without the old password, so the backup always opens.
+     Without: an exact copy. A plain-text list (CSV) saved as .xlsx is backed up with a .csv name so it opens. */
+  let data = null;
+  if (bytes !== undefined) {
+    if (!(bytes instanceof Uint8Array) || bytes.length > 50 * 1024 * 1024 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) throw new Error('That is not a spreadsheet.');
+    data = Buffer.from(bytes);
+  }
+  let ext = '.xlsx';
+  if (!data) {
+    const fh = await fs.promises.open(f, 'r'); const head = Buffer.alloc(4);
+    try { await fh.read(head, 0, 4, 0); } finally { await fh.close(); }
+    const zip = head[0] === 0x50 && head[1] === 0x4b, cfb = head[0] === 0xd0 && head[1] === 0xcf;
+    if (!zip && !cfb) ext = '.csv';
+  }
   const dir = path.join(path.dirname(f), 'Backups');
   await fs.promises.mkdir(dir, { recursive: true });
   const base = path.basename(f, path.extname(f)) + ' backup ' + stamp();
-  let dest = path.join(dir, base + '.xlsx'), n = 2;
-  while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ').xlsx'); } catch (err) { break; } }
-  await fs.promises.copyFile(f, dest, fs.constants.COPYFILE_EXCL);
+  let dest = path.join(dir, base + ext), n = 2;
+  while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ')' + ext); } catch (err) { break; } }
+  if (data) await fs.promises.writeFile(dest, data, { flag: 'wx' });
+  else await fs.promises.copyFile(f, dest, fs.constants.COPYFILE_EXCL);
   return path.basename(dest);
 });
 /* Save to a temporary file next to the spreadsheet, then swap it in, so a half-written file is never left behind. */

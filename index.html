@@ -1331,7 +1331,12 @@ body.sheetview .prompts{position:static;max-height:none}
   function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
   function colN(ref){var m=String(ref).match(/^([A-Z]+)/);if(!m)return -1;var n=0;for(var i=0;i<m[1].length;i++)n=n*26+(m[1].charCodeAt(i)-64);return n-1}
   function xe(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'')}
-  function cStr(r,c,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+' t="inlineStr"><is><t xml:space="preserve">'+xe(v)+'</t></is></c>'}
+  var SST=null;
+  function cStr(r,c,v,st){
+    if(!SST)return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+' t="inlineStr"><is><t xml:space="preserve">'+xe(v)+'</t></is></c>';
+    v=String(v);SST.count++;var i=SST.idx[v];if(i==null){i=SST.list.length;SST.idx[v]=i;SST.list.push(v)}
+    return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+' t="s"><v>'+i+'</v></c>'}
+  function sstXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+SST.count+'" uniqueCount="'+SST.list.length+'">'+SST.list.map(function(v){return '<si><t xml:space="preserve">'+xe(v)+'</t></si>'}).join('')+'</sst>'}
   function cNum(r,c,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+'><v>'+(isFinite(v)?v:0)+'</v></c>'}
   function cFor(r,c,f,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+'><f>'+xe(f)+'</f><v>'+(isFinite(v)?v:0)+'</v></c>'}
   function sheetXml(list){
@@ -1369,13 +1374,13 @@ body.sheetview .prompts{position:static;max-height:none}
   var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6B3A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>';
   async function buildXlsx(by){
     var z=new JSZip();
-    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>');
     z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
     z.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Stock" sheetId="1" r:id="rId1"/><sheet name="Summary" sheetId="2" r:id="rId2"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
-    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
     z.file('xl/styles.xml',STYLES);
-    z.file('xl/worksheets/sheet1.xml',sheetXml(by));
-    z.file('xl/worksheets/sheet2.xml',sumXml(by));
+    SST={list:[],idx:Object.create(null),count:0};
+    try{z.file('xl/worksheets/sheet1.xml',sheetXml(by));z.file('xl/worksheets/sheet2.xml',sumXml(by));z.file('xl/sharedStrings.xml',sstXml())}finally{SST=null}
     return z.generateAsync({type:'uint8array',compression:'DEFLATE'});
   }
   function parseXml(t){return new DOMParser().parseFromString(t,'application/xml')}
@@ -1508,7 +1513,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   function flat(by){return by.cactus.concat(by.pot)}
   function rawToBy(raws){return raws.map(function(x){return mapItem(x.id,x)})}
-  var rawList=[],encPw=null,wasEnc=false,idleTimer=null,fileFmt={isApp:true,hasContent:false},convertOk=false;
+  var rawList=[],encPw=null,wasEnc=false,plainBytes=null,idleTimer=null,fileFmt={isApp:true,hasContent:false},convertOk=false;
   function foreign(){return !fileFmt.isApp&&fileFmt.hasContent&&!convertOk}
   /* ---------- password encryption: the same "Encrypt with Password" Excel uses (Agile, AES-256, SHA-512) ---------- */
   var SHA512=(function(){
@@ -1730,10 +1735,10 @@ body.sheetview .prompts{position:static;max-height:none}
 
   async function loadFresh(){
     var f=await F.read(),bytes=f.bytes;
-    wasEnc=isCfb(bytes);
+    wasEnc=isCfb(bytes);plainBytes=null;
     if(wasEnc){
       if(encPw===null){var le=new Error('locked');le.code='locked';throw le}
-      bytes=await decryptPackage(bytes,encPw);
+      bytes=await decryptPackage(bytes,encPw);plainBytes=bytes;
     }
     var by=await readXlsx(bytes);
     fileFmt={isApp:by.isApp,hasContent:by.hasContent,n:by.cactus.length+by.pot.length,by:by};
@@ -1752,7 +1757,8 @@ body.sheetview .prompts{position:static;max-height:none}
   var backedUpFor=null,sessionNew=true;
   async function backupOnce(){
     if(!IS_NATIVE||!F||!F.path||backedUpFor===F.path||!fileFmt.hasContent)return;
-    try{await window.cactusNative.backup(F.path);backedUpFor=F.path}catch(e){}
+    /* a file that still has the old password is backed up without it, so the backup always opens */
+    try{await window.cactusNative.backup(F.path,wasEnc&&plainBytes?plainBytes:undefined);backedUpFor=F.path}catch(e){}
   }
   function publish(){allItems=rawList.map(function(x){return mapItem(x.id,x)});loaded=true;recompute()}
   /* one change at a time: read the file, apply, save, release */
@@ -2374,7 +2380,8 @@ body.sheetview .prompts{position:static;max-height:none}
     var pw=$('u-pw').value;if(!pw||!F)return;
     $('u-go').disabled=true;$('u-msg').textContent='Checking…';
     encPw=pw;
-    try{await loadFresh();$('unlock').hidden=true;$('u-pw').value='';await startWith(F)}
+    try{await loadFresh();$('unlock').hidden=true;$('u-pw').value='';await startWith(F);
+      if(wasEnc&&!foreign()){await commit(function(){});say('Unlocked. The password is now removed from the spreadsheet, and a backup without a password was saved.')}}
     catch(e){
       encPw=null;
       if(e&&e.code==='badpw'){await new Promise(function(r){setTimeout(r,1000)});$('u-msg').textContent='That password is not right.';$('u-pw').select()}

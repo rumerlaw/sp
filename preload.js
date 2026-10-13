@@ -6,5 +6,5 @@ contextBridge.exposeInMainWorld('cactusNative', {
   stat: (p) => ipcRenderer.invoke('stat', p),
   read: (p) => ipcRenderer.invoke('read', p),
   write: (p, bytes) => ipcRenderer.invoke('write', p, bytes),
-  backup: (p) => ipcRenderer.invoke('backup', p)
+  backup: (p, bytes) => ipcRenderer.invoke('backup', p, bytes)
 });
