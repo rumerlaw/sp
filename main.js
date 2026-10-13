@@ -7,6 +7,8 @@ const os = require('os');
    (opens a spreadsheet, records stock, saves, backs up, reopens) before it is published. */
 const SMOKE = process.argv.includes('--smoke-test');
 const SMOKE_DIR = path.join(os.tmpdir(), 'sp-smoke-' + process.pid);
+/* The app keeps no passwords or secrets, so it never needs the Mac keychain (no "wants to use your confidential info" prompt). */
+if (process.platform === 'darwin') app.commandLine.appendSwitch('use-mock-keychain');
 const blocked = [];
 /* each test run starts like a brand-new install, with nothing remembered */
 if (SMOKE) app.setPath('userData', path.join(SMOKE_DIR, 'profile'));

@@ -413,8 +413,8 @@ body.sheetview .prompts{position:static;max-height:none}
     <div class="entryhead">
       <h2 id="eh">Add or update stock</h2>
       <div class="seg" role="group" aria-label="How you are entering it">
-        <button class="btn small" type="button" data-mode="speak" aria-pressed="true">Speak</button>
-        <button class="btn small" type="button" data-mode="type" aria-pressed="false">Type</button>
+        <button class="btn small" type="button" data-mode="type" aria-pressed="true">Type</button>
+        <button class="btn small" type="button" data-mode="speak" aria-pressed="false">Speak</button>
       </div>
     </div>
     <textarea id="say" aria-describedby="sayhelp"></textarea>
@@ -2268,7 +2268,7 @@ body.sheetview .prompts{position:static;max-height:none}
   });
 
   /* ---------- speaking and typing get their own prompts ---------- */
-  var mode='speak';
+  var mode='type';
   var MODES={
     speak:{
       placeholder:'Tap the microphone on your keyboard, then talk…',
