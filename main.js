@@ -119,6 +119,8 @@ function runSmokeTest(win) {
     const months = fs.existsSync(bdir) ? fs.readdirSync(bdir) : [];
     const backups = months.length === 1 ? fs.readdirSync(path.join(bdir, months[0])) : [];
     check(months.length === 1 && /^\d{4}-\d{2} [A-Z][a-z]+$/.test(months[0]) && backups.length === 1 && /^[A-Z][a-z]{2} \d{2} \d{1,2}-\d{2} [AP]M backup\.xlsx$/.test(backups[0]), 'one backup at the first change: Backups/' + months.join(',') + '/' + backups.join(', '));
+    const info = await js("(function(){document.getElementById('sharebtn').click();var t=document.getElementById('s-backup').innerText;document.getElementById('sharebtn').click();return t})()");
+    check(/Backups › \d{4}-\d{2} [A-Z][a-z]+ › [A-Z][a-z]{2} \d{2} .* backup\.xlsx/.test(info), 'the app shows where the backup went: ' + info);
     check(fs.readdirSync(SMOKE_DIR).every((f) => !/\.saving-/.test(f)), 'no half-written temp files left');
     const other = path.join(SMOKE_DIR, 'Not Picked.xlsx'); fs.copyFileSync(SMOKE_XLSX, other);
     check(await js("window.cactusNative.read(" + JSON.stringify(other) + ").then(function(){return false},function(){return true})"), 'a file you did not pick cannot be read');
@@ -165,19 +167,30 @@ ipcMain.handle('read', async (e, p) => {
 /* Backups go in a "Backups" folder next to the spreadsheet, one folder per month ("2026-10 October"),
    named by date and time: "Oct 13 5-31 PM backup.xlsx", so they list from the start of the month to the end. */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+/* a spreadsheet opened from inside the Backups folder keeps using that same Backups folder */
+function backupRoot(f) {
+  for (let dir = path.dirname(f); ; dir = path.dirname(dir)) {
+    if (path.basename(dir).toLowerCase() === 'backups') return dir;
+    if (path.dirname(dir) === dir) break;
+  }
+  return path.join(path.dirname(f), 'Backups');
+}
 function backupPlace(f) {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
   let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-  /* a spreadsheet opened from inside the Backups folder keeps using that same Backups folder */
-  let root = path.join(path.dirname(f), 'Backups');
-  for (let dir = path.dirname(f); ; dir = path.dirname(dir)) {
-    if (path.basename(dir).toLowerCase() === 'backups') { root = dir; break; }
-    if (path.dirname(dir) === dir) break;
-  }
+  const root = backupRoot(f);
   const month = d.getFullYear() + '-' + p(d.getMonth() + 1) + ' ' + MONTHS[d.getMonth()];
   const name = MONTHS[d.getMonth()].slice(0, 3) + ' ' + p(d.getDate()) + ' ' + h + '-' + p(d.getMinutes()) + ' ' + ap + ' backup';
   return { dir: path.join(root, month), name };
 }
+/* "Show backups" opens the Backups folder of the spreadsheet you picked (nothing else) in Finder / File Explorer. */
+ipcMain.handle('showBackups', async (e, p) => {
+  if (!fromOurPage(e)) throw new Error('Not allowed.');
+  const root = backupRoot(check(p));
+  try { await fs.promises.access(root); } catch (err) { return 'There are no backups yet. One is made just before your first change.'; }
+  const err = await shell.openPath(root);
+  return err ? 'Could not open the Backups folder.' : '';
+});
 ipcMain.handle('backup', async (e, p, bytes) => {
   if (!fromOurPage(e)) throw new Error('Not allowed.');
   const f = check(p);
@@ -201,7 +214,7 @@ ipcMain.handle('backup', async (e, p, bytes) => {
   while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ')' + ext); } catch (err) { break; } }
   if (data) await fs.promises.writeFile(dest, data, { flag: 'wx' });
   else await fs.promises.copyFile(f, dest, fs.constants.COPYFILE_EXCL);
-  return path.basename(dest);
+  return path.basename(dir) + '/' + path.basename(dest);
 });
 /* Save to a temporary file next to the spreadsheet, then swap it in, so a half-written file is never left behind. */
 ipcMain.handle('write', async (e, p, bytes) => {

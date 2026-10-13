@@ -399,8 +399,9 @@ body.sheetview .prompts{position:static;max-height:none}
     <p><strong>Shared spreadsheet</strong></p>
     <p class="fine">This list lives in the Excel file <strong id="s-file"></strong>. Every change opens it, updates it, saves it and closes it again. Other people using the app see your changes within a few seconds (once your cloud folder has synced the file).</p>
     <p class="fine" id="s-saved"></p>
-    <p class="fine" style="margin-top:8px">The first time something changes each time you open the app, a copy of the spreadsheet is saved in a <strong>Backups</strong> folder next to it, named with the date and time.</p>
-    <div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="s-refresh">Reload now</button><button class="btn" type="button" id="s-switch">Use a different file</button></div>
+    <p class="fine" style="margin-top:8px">The first time something changes each time you open the app, a copy of the spreadsheet is saved in the <strong>Backups</strong> folder next to it, inside a folder for the month (for example Backups › 2026-10 October › Oct 13 5-31 PM backup.xlsx).</p>
+    <p class="fine" id="s-backup" style="margin-top:6px"></p>
+    <div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="s-refresh">Reload now</button><button class="btn" type="button" id="s-showbk" hidden>Show backups</button><button class="btn" type="button" id="s-switch">Use a different file</button></div>
   </section>
   <div class="cats" id="cats" role="group" aria-label="Show a category"></div>
   <div class="summary" id="summary"></div>
@@ -1515,7 +1516,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   function flat(by){return by.cactus.concat(by.pot)}
   function rawToBy(raws){return raws.map(function(x){return mapItem(x.id,x)})}
-  var rawList=[],encPw=null,wasEnc=false,plainBytes=null,idleTimer=null,fileFmt={isApp:true,hasContent:false},convertOk=false;
+  var rawList=[],encPw=null,wasEnc=false,plainBytes=null,lastBackup='',backupErr='',idleTimer=null,fileFmt={isApp:true,hasContent:false},convertOk=false;
   function foreign(){return !fileFmt.isApp&&fileFmt.hasContent&&!convertOk}
   /* ---------- password encryption: the same "Encrypt with Password" Excel uses (Agile, AES-256, SHA-512) ---------- */
   var SHA512=(function(){
@@ -1760,7 +1761,9 @@ body.sheetview .prompts{position:static;max-height:none}
   async function backupOnce(){
     if(!IS_NATIVE||!F||!F.path||backedUpFor===F.path||!fileFmt.hasContent)return;
     /* a file that still has the old password is backed up without it, so the backup always opens */
-    try{await window.cactusNative.backup(F.path,wasEnc&&plainBytes?plainBytes:undefined);backedUpFor=F.path}catch(e){}
+    try{lastBackup=await window.cactusNative.backup(F.path,wasEnc&&plainBytes?plainBytes:undefined);backedUpFor=F.path;backupErr='';showBackupInfo()}
+    catch(e){backupErr=String(e&&e.message||e).replace(/^Error invoking remote method '[^']*': (Error: )?/,'');showBackupInfo();
+      setTimeout(function(){say('Your change was saved, but the backup copy could not be made: '+backupErr,true)},50)}
   }
   function publish(){allItems=rawList.map(function(x){return mapItem(x.id,x)});loaded=true;recompute()}
   /* one change at a time: read the file, apply, save, release */
@@ -2451,9 +2454,20 @@ body.sheetview .prompts{position:static;max-height:none}
     $('sharebox').hidden=!$('sharebox').hidden;
     $('s-file').textContent=F?F.name:'';
     $('s-saved').textContent=lastSaved?('Last saved by this device at '+fmtTime(lastSaved)+'.'):'';
+    showBackupInfo();
+  });
+  function showBackupInfo(){
+    var el=$('s-backup');if(!el)return;
+    el.textContent=backupErr?('The backup copy could not be made this time: '+backupErr):
+      lastBackup?('Backup made this session: Backups › '+String(lastBackup).split('/').join(' › ')):'No backup yet this session. One is made just before your first change.';
+    $('s-showbk').hidden=!IS_NATIVE;
+  }
+  $('s-showbk').addEventListener('click',async function(){
+    if(!F||!F.path)return;
+    try{var r=await window.cactusNative.showBackups(F.path);if(r)say(r,true)}catch(e){say('Could not open the Backups folder.',true)}
   });
   $('s-refresh').addEventListener('click',async function(){try{await loadFresh();publish();say('Reloaded from the spreadsheet.')}catch(e){fail(e)}});
-  $('s-switch').addEventListener('click',function(){F=null;db=null;convertOk=false;backedUpFor=null;encPw=null;try{localStorage.removeItem('cactus-xl-path')}catch(e){}showSetup('Choose the spreadsheet to use.')});
+  $('s-switch').addEventListener('click',function(){F=null;db=null;convertOk=false;backedUpFor=null;lastBackup='';backupErr='';encPw=null;try{localStorage.removeItem('cactus-xl-path')}catch(e){}showSetup('Choose the spreadsheet to use.')});
   /* "Download spreadsheet" saves a real Excel copy (.xlsx) of the current stock, never a text file. */
   dlApi={save:async function(o){
     var data=await buildXlsx(rawToBy(rawList)),name=String(o.filename||'stock.xlsx').replace(/^stock-/,'SP Inventory copy ').replace(/\.csv$/i,'')+'.xlsx';
