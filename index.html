@@ -290,6 +290,11 @@ body.sheetview .prompts{position:static;max-height:none}
 /* the typing box and spreadsheet text boxes grow to fit what you type */
 #say{overflow:hidden;min-height:72px}
 .sheet td input[type=text]{field-sizing:content;max-width:420px}
+/* header: file on the left, name in the middle, light/dark on the right */
+.top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px}
+.tmid{text-align:center}.tleft{justify-self:start;min-width:0;max-width:100%}.tright{justify-self:end}
+.tleft .btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+@media (max-width:640px){.top{grid-template-columns:1fr auto}.tmid{grid-column:1/-1;grid-row:1}.tleft{grid-row:2}.tright{grid-row:2}}
 /* numbers centered */
 .sheet th.n,.sheet td.n,.sheet input[type=number]{text-align:center}
 .sheet td:has(> input[type=number]),.sheet td:has(> .hidcell){text-align:center}
@@ -386,12 +391,12 @@ body.sheetview .prompts{position:static;max-height:none}
 <div id="app" hidden>
 <div class="wrap">
   <header class="top">
-    <div>
+    <div class="tleft" id="tleft"><button class="btn small" id="sharebtn" type="button" hidden><span id="fname"></span><span id="localwarn" hidden style="color:var(--bloom);font-weight:700"> · not in Dropbox</span></button></div>
+    <div class="tmid">
       <h1>SP Inventory</h1>
       <p class="sub" id="sub">Loading your plants…</p>
     </div>
-    <button class="btn small" id="sharebtn" type="button" hidden>File: <span id="fname"></span><span id="localwarn" hidden style="color:var(--bloom);font-weight:700"> · not in Dropbox</span></button>
-    <button class="btn small" id="theme" type="button" aria-label="Switch between light and dark mode">Light mode</button>
+    <div class="tright"><button class="btn small" id="theme" type="button" aria-label="Switch between light and dark mode">Light mode</button></div>
   </header>
 
   <div class="syncbar" id="sync" hidden></div>
@@ -2395,7 +2400,7 @@ body.sheetview .prompts{position:static;max-height:none}
     if(IS_NATIVE){try{localStorage.setItem('cactus-xl-path',file.path)}catch(e){}}else{await rememberFile(file.handle)}
     if(foreign()){askConvert();return}
     db=file;$('setup').hidden=true;$('app').hidden=false;
-    $('sharebtn').hidden=false;$('fname').textContent=file.name;showWhere();
+    $('sharebtn').hidden=false;$('fname').textContent=shortPath(file);$('sharebtn').title=(file.path||file.name)+' (click for file options)';showWhere();
     if(F.path!==backedUpFor&&F.name!==backedUpFor)sessionNew=true;
     publish();startWatch();
     try{
@@ -2480,6 +2485,13 @@ body.sheetview .prompts{position:static;max-height:none}
     $('s-saved').textContent=lastSaved?('Last saved by this device at '+fmtTime(lastSaved)+'.'):'';
     showBackupInfo();showWhere();
   });
+  function shortPath(file){
+    var p=String(file&&file.path||'');if(!p)return file?file.name:'';
+    var parts=p.split(/[\\\/]+/).filter(Boolean),k=-1;
+    for(var i=0;i<parts.length;i++)if(/dropbox|onedrive|google ?drive|icloud/i.test(parts[i]))k=i;
+    var keep=k>=0?parts.slice(k):parts.slice(-3);
+    return (k>=0||parts.length<=3?'':'… / ')+keep.join(' / ');
+  }
   function inCloud(p){return /dropbox|onedrive|google ?drive|icloud|CloudStorage|Mobile Documents|box sync/i.test(String(p||''))}
   function showWhere(){
     var w=$('s-where'),warn=IS_NATIVE&&F&&F.path&&!inCloud(F.path);
