@@ -1755,7 +1755,7 @@ body.sheetview .prompts{position:static;max-height:none}
     lastMtime=await F.stat();lastSaved=new Date();
   }
   /* Before the first change of a session, copy the spreadsheet to a "Backups" folder next to it,
-     named "<file name> backup <date> <time> before.xlsx". Nothing changed = no backup. When the app closes, a matching "after" copy is made too. */
+     in Backups/<year-month>/, named "<Mon> <day> <time> backup.xlsx". Nothing changed = no backup. */
   var backedUpFor=null,sessionNew=true;
   async function backupOnce(){
     if(!IS_NATIVE||!F||!F.path||backedUpFor===F.path||!fileFmt.hasContent)return;

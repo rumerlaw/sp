@@ -114,8 +114,9 @@ function runSmokeTest(win) {
     const buf = fs.readFileSync(SMOKE_XLSX);
     check(buf.length > 1000 && buf[0] === 0x50 && buf[1] === 0x4b, 'spreadsheet written to disk (' + buf.length + ' bytes)');
     const bdir = path.join(SMOKE_DIR, 'Backups');
-    const backups = fs.existsSync(bdir) ? fs.readdirSync(bdir) : [];
-    check(backups.length === 1 && / before\.xlsx$/.test(backups[0]), 'one "before" backup at the first change: ' + backups.join(', '));
+    const months = fs.existsSync(bdir) ? fs.readdirSync(bdir) : [];
+    const backups = months.length === 1 ? fs.readdirSync(path.join(bdir, months[0])) : [];
+    check(months.length === 1 && /^\d{4}-\d{2} [A-Z][a-z]+$/.test(months[0]) && backups.length === 1 && /^[A-Z][a-z]{2} \d{2} \d{1,2}-\d{2} [AP]M backup\.xlsx$/.test(backups[0]), 'one backup at the first change: Backups/' + months.join(',') + '/' + backups.join(', '));
     check(fs.readdirSync(SMOKE_DIR).every((f) => !/\.saving-/.test(f)), 'no half-written temp files left');
     const other = path.join(SMOKE_DIR, 'Not Picked.xlsx'); fs.copyFileSync(SMOKE_XLSX, other);
     check(await js("window.cactusNative.read(" + JSON.stringify(other) + ").then(function(){return false},function(){return true})"), 'a file you did not pick cannot be read');
@@ -124,11 +125,6 @@ function runSmokeTest(win) {
     await until("/Candles/.test(document.getElementById('list').innerText)", 'the list after reopening');
     const txt = await js("document.getElementById('list').innerText");
     check(/\b4\b/.test(txt), 'reopened the spreadsheet and it shows 4 candles left');
-    const made = await afterBackups();
-    const all = fs.readdirSync(bdir).filter((x) => !/^\./.test(x));
-    check(made.length === 1 && all.length === 2 && all.some((x) => / after\.xlsx$/.test(x)), 'closing makes an "after" backup with the changes: ' + all.join(', '));
-    const ab = fs.readFileSync(path.join(bdir, made[0]));
-    check(ab.equals(fs.readFileSync(SMOKE_XLSX)), 'the "after" backup matches the saved spreadsheet');
     report(true);
   })().catch(async (err) => {
     lines.push('ERROR ' + (err && err.message));
@@ -164,10 +160,21 @@ ipcMain.handle('read', async (e, p) => {
   return { bytes: await fs.promises.readFile(f), mtime: st.mtimeMs };
 });
 /* Backup copy: "<file name> backup <date> <time>.xlsx" in a "Backups" folder next to the spreadsheet. */
-function stamp() {
+/* Backups go in a "Backups" folder next to the spreadsheet, one folder per month ("2026-10 October"),
+   named by date and time: "Oct 13 5-31 PM backup.xlsx", so they list from the start of the month to the end. */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function backupPlace(f) {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
   let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + h + '-' + p(d.getMinutes()) + ' ' + ap;
+  /* a spreadsheet opened from inside the Backups folder keeps using that same Backups folder */
+  let root = path.join(path.dirname(f), 'Backups');
+  for (let dir = path.dirname(f); ; dir = path.dirname(dir)) {
+    if (path.basename(dir).toLowerCase() === 'backups') { root = dir; break; }
+    if (path.dirname(dir) === dir) break;
+  }
+  const month = d.getFullYear() + '-' + p(d.getMonth() + 1) + ' ' + MONTHS[d.getMonth()];
+  const name = MONTHS[d.getMonth()].slice(0, 3) + ' ' + p(d.getDate()) + ' ' + h + '-' + p(d.getMinutes()) + ' ' + ap + ' backup';
+  return { dir: path.join(root, month), name };
 }
 ipcMain.handle('backup', async (e, p, bytes) => {
   if (!fromOurPage(e)) throw new Error('Not allowed.');
@@ -186,9 +193,8 @@ ipcMain.handle('backup', async (e, p, bytes) => {
     const zip = head[0] === 0x50 && head[1] === 0x4b, cfb = head[0] === 0xd0 && head[1] === 0xcf;
     if (!zip && !cfb) ext = '.csv';
   }
-  const dir = path.join(path.dirname(f), 'Backups');
+  const { dir, name: base } = backupPlace(f);
   await fs.promises.mkdir(dir, { recursive: true });
-  const base = path.basename(f, path.extname(f)) + ' backup ' + stamp() + ' before';
   let dest = path.join(dir, base + ext), n = 2;
   while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ')' + ext); } catch (err) { break; } }
   if (data) await fs.promises.writeFile(dest, data, { flag: 'wx' });
@@ -204,35 +210,8 @@ ipcMain.handle('write', async (e, p, bytes) => {
   if (buf.length > 50 * 1024 * 1024 || buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error('That is not a spreadsheet.');
   const tmp = f + '.saving-' + process.pid;
   await fs.promises.writeFile(tmp, buf);
-  try { await fs.promises.rename(tmp, f); written.add(f); }
+  try { await fs.promises.rename(tmp, f); }
   catch (err) { try { await fs.promises.unlink(tmp); } catch (e2) {} throw err; }
-});
-
-/* When the app closes, every spreadsheet changed in this session gets a second backup with all the changes:
-   "<file name> backup <date> <time> after.xlsx". With the "before" copy, both sides of the session are kept. */
-const written = new Set();
-async function afterBackups() {
-  const made = [];
-  for (const f of [...written]) {
-    try {
-      const dir = path.join(path.dirname(f), 'Backups');
-      await fs.promises.mkdir(dir, { recursive: true });
-      const base = path.basename(f, path.extname(f)) + ' backup ' + stamp() + ' after';
-      let dest = path.join(dir, base + '.xlsx'), n = 2;
-      while (true) { try { await fs.promises.access(dest); dest = path.join(dir, base + ' (' + (n++) + ').xlsx'); } catch (err) { break; } }
-      await fs.promises.copyFile(f, dest, fs.constants.COPYFILE_EXCL);
-      made.push(path.basename(dest));
-    } catch (err) {}
-    written.delete(f);
-  }
-  return made;
-}
-let quitting = false;
-app.on('before-quit', (e) => {
-  if (quitting || !written.size) return;
-  e.preventDefault(); quitting = true;
-  const t = setTimeout(() => app.quit(), 15000);
-  afterBackups().finally(() => { clearTimeout(t); app.quit(); });
 });
 
 /* Only one copy of the app runs at a time, so two windows never save over each other. */
