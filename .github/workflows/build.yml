@@ -25,7 +25,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        # Apple-chip Mac machines are often fully booked on GitHub; the Intel ones are easy to get and build both Mac versions.
+        os: [windows-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     # Allowed to add files to the Downloads page; nothing else.
@@ -48,7 +49,7 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
-            app=$(ls -d dist/mac-arm64/*.app 2>/dev/null || ls -d dist/mac*/*.app | head -1)
+            if [ "$(uname -m)" = "arm64" ]; then app=$(ls -d dist/mac-arm64/*.app | head -1); else app=$(ls -d dist/mac/*.app | head -1); fi
             exe="$app/Contents/MacOS/$(basename "$app" .app)"
           else
             exe="dist/win-unpacked/SP Inventory.exe"
@@ -62,7 +63,8 @@ jobs:
         run: |
           exec > >(tee "$RUNNER_TEMP/dmg-check.txt") 2>&1
           set -e
-          dmg=$(ls dist/*-arm64.dmg | head -1); echo "Checking $dmg"
+          if [ "$(uname -m)" = "arm64" ]; then dmg=$(ls dist/*-arm64.dmg | head -1); else dmg=$(ls dist/*.dmg | grep -v arm64 | head -1); fi; echo "Checking $dmg"
+          for d in dist/*.dmg; do hdiutil verify "$d"; done
           hdiutil verify "$dmg"
           mnt=$(mktemp -d); hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
           app=$(ls -d "$mnt"/*.app | head -1); ls "$mnt"
