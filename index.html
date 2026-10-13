@@ -287,6 +287,9 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 :root[data-theme="light"] .sheet thead th{background:#D5D9D0}
 /* in the spreadsheet the reminder box scrolls away, so it never covers the headings */
 body.sheetview .prompts{position:static;max-height:none}
+/* the typing box and spreadsheet text boxes grow to fit what you type */
+#say{overflow:hidden;min-height:72px}
+.sheet td input[type=text]{field-sizing:content;max-width:420px}
 /* numbers centered */
 .sheet th.n,.sheet td.n,.sheet input[type=number]{text-align:center}
 .sheet td:has(> input[type=number]),.sheet td:has(> .hidcell){text-align:center}
@@ -475,7 +478,7 @@ body.sheetview .prompts{position:static;max-height:none}
   function qtyOf(w){w=String(w||'').toLowerCase();if(/^\d+$/.test(w))return parseInt(w,10);return WORDS[w]||NaN}
   function norm(s){return String(s||'').toLowerCase().replace(/\b(cactus|cacti|plants?|the)\b/g,'').replace(/[^a-z0-9]/g,'')}
   function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||('plant-'+Date.now())}
-  function title(s){return String(s).trim().replace(/\s+/g,' ').replace(/\b([a-z])/g,function(m){return m.toUpperCase()})}
+  function title(s){return String(s).trim().replace(/\s+/g,' ').replace(/\b([a-z])/g,function(m){return m.toUpperCase()}).replace(/ X (?=[A-Za-z])/g,' x ')}
   function genusText(v){v=String(v||'').trim();return (!/\s/.test(v)&&new RegExp('^(?:'+GEN+')$','i').test(v))?capSci(v):v}
   /* "Common Name - Genus species" or "Common Name Genus species": the Latin part goes in the Genus column */
   var GEN='stenocactus|echinocereus|echinocactus|echinopsis|opuntia|cylindropuntia|tephrocactus|mammillaria|mammillopsis|coryphantha|ferocactus|thelocactus|gymnocalycium|astrophytum|cephalocereus|pilosocereus|oreocereus|cleistocactus|espostoa|myrtillocactus|pachycereus|carnegiea|cereus|trichocereus|rebutia|sulcorebutia|aylostera|lobivia|notocactus|parodia|lophophora|ariocarpus|turbinicarpus|copiapoa|eriosyce|neoporteria|melocactus|schlumbergera|hatiora|rhipsalis|epiphyllum|disocactus|selenicereus|hylocereus|acanthocereus|stetsonia|discocactus|frailea|escobaria|neolloydia|obregonia|leuchtenbergia|strombocactus|pelecyphora|echinomastus|sclerocactus|hamatocactus|matucana|haageocereus';
@@ -706,7 +709,7 @@ body.sheetview .prompts{position:static;max-height:none}
     return null;
   }
 
-  function say(text,err){var m=$('msg');m.textContent=text||'';m.className='msg'+(err?' err':'');if(text&&typeof undoGroup!=='undefined'&&undoGroup&&!undoing&&!redoing&&!/^(Undone|Redone)/.test(text)){if(!err)undoGroup.label=String(text);undoGroup=null}if(typeof syncUndo==='function')syncUndo()}
+  function say(text,err){try{growSay()}catch(e){}var m=$('msg');m.textContent=text||'';m.className='msg'+(err?' err':'');if(text&&typeof undoGroup!=='undefined'&&undoGroup&&!undoing&&!redoing&&!/^(Undone|Redone)/.test(text)){if(!err)undoGroup.label=String(text);undoGroup=null}if(typeof syncUndo==='function')syncUndo()}
   function needsReorder(it){return it.qty<=it.reorderAt&&!(it.onOrder>0)&&it.snoozedQty!==it.qty}
   function qctl(it){
     var id=h(it.id),dis=canWrite?'':' disabled';
@@ -1969,6 +1972,27 @@ body.sheetview .prompts{position:static;max-height:none}
     }
     $('confirm').innerHTML='<div class="confirm"><strong>Delete '+h(label)+'? '+q+' in stock.</strong><div class="row"><button class="btn bloom" data-act="yes">Yes, delete</button><button class="btn" data-act="no">Keep it</button></div><p class="fine">You can undo this.</p></div>';
   }
+  /* A pasted list, one product per line, like
+       Dioscorea elephantipes x 4   $5.00   will sell for $10
+     "x 4" is how many you got; the prices are for EACH one. A " x " between names (a hybrid) is part of the name. */
+  var WORDN={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,an:1};
+  function listLine(line){
+    var m=String(line).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*(?:@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and\s+)?(?:i\s+)?(?:will|to|i'?ll)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
+    if(!m)return null;
+    var name=m[1].replace(/[\s,;:-]+$/,'').trim();if(!/[a-z]/i.test(name))return null;
+    var g=guessGenus(name),fw=name.split(/\s+/)[0];
+    if(g&&fw.toLowerCase()!==g.toLowerCase()&&fw.slice(0,3).toLowerCase()===g.slice(0,3).toLowerCase()&&fw.length>=5)name=g+name.slice(fw.length);
+    var out=['bought '+m[2]+' '+name+' at '+m[3]+' each'+(m[4]?' sell for '+m[4]+' each':'')],rest=(m[5]||'').trim();
+    var sm=rest.match(/\bsold\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a|an)\b/i)||rest.match(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:sold|already sold)\b/i);
+    if(sm){var k=/^\d+$/.test(sm[1])?Number(sm[1]):WORDN[sm[1].toLowerCase()];if(k>0)out.push('sold '+k+' '+name+(m[4]?' at '+m[4]:''))}
+    else if(rest&&!/^(each|ea|please|thanks?|thank you)?\.?$/i.test(rest))return null;
+    return out;
+  }
+  function listLines(t){
+    var ls=String(t).split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean);if(!ls.length)return null;
+    var all=[];for(var i=0;i<ls.length;i++){var c=listLine(ls[i]);if(!c)return null;all=all.concat(c)}
+    return all;
+  }
   var viaEnter=false;
   async function runCheck(fromPause){
     var enterSave=viaEnter;viaEnter=false;
@@ -1976,6 +2000,19 @@ body.sheetview .prompts{position:static;max-height:none}
     if($('go').disabled)return;
     var t=$('say').value.trim();
     if(!t){if(!fromPause)say('Say or type something first.',true);return}
+    var LL=listLines(t);
+    if(LL&&db&&canWrite){
+      $('go').disabled=true;$('go').textContent='Working…';say('');$('confirm').innerHTML='';pending=null;
+      var done=[],bad=[];
+      for(var li=0;li<LL.length;li++){
+        try{var lr=await interpret(LL[li],false);if(lr.error||lr.kind==='needname'){bad.push(LL[li]+' ('+(lr.error||lr.text)+')');continue}await apply(lr);done.push(String(lr.text||'').replace(/^Saved\.\s*/,''))}
+        catch(e){bad.push(LL[li])}
+      }
+      $('go').disabled=false;$('go').textContent='Save';
+      if(!bad.length)$('say').value='';
+      say('Saved '+done.length+' of '+LL.length+'. '+done.join(' ')+(bad.length?' Could not do: '+bad.join('; ')+'.':''),!!bad.length);
+      return;
+    }
     var dm=t.match(/^(?:please\s+)?(?:delete|remove|get rid of|erase|take out)\s+(?:all\s+)?(?:of\s+)?(?:the\s+|my\s+)?(.+?)[.!]?$/i);
     if(dm&&db&&canWrite){askDelete(dm[1]);return}
     var ra=reorderAnswer(t);
@@ -2218,6 +2255,8 @@ body.sheetview .prompts{position:static;max-height:none}
     var c=e.target.closest&&e.target.closest('[data-eg]');if(!c)return;
     $('say').value=MODES[mode].eg[Number(c.getAttribute('data-eg'))];$('say').focus();
   });
+  function growSay(){var ta=$('say');if(!ta)return;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight+2,Math.round(window.innerHeight*0.6))+'px'}
+  $('say').addEventListener('input',growSay);
   $('say').addEventListener('keydown',function(e){
     if(mode==='type'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();viaEnter=true;$('go').click()}
   });
