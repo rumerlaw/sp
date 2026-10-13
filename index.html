@@ -2021,7 +2021,7 @@ body.sheetview .prompts{position:static;max-height:none}
      "x 4" is how many you got; the prices are for EACH one. A " x " between names (a hybrid) is part of the name. */
   var WORDN={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,an:1};
   function listLine(line){
-    var m=String(line).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*(?:@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and\s+)?(?:i\s+)?(?:will|to|i'?ll)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
+    var m=String(line).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*[,;-]?\s*(?:(?:i\s+)?(?:bought|paid|got|cost|costs|purchased)\s*(?:it|them|each)?\s*(?:for|at)?|@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and|but)\s+)?(?:(?:i\s+)?(?:will|to|i'?ll|can|should)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
     if(!m)return null;
     var name=m[1].replace(/[\s,;:-]+$/,'').trim();if(!/[a-z]/i.test(name))return null;
     var g=guessGenus(name),fw=name.split(/\s+/)[0];
@@ -2283,6 +2283,13 @@ body.sheetview .prompts{position:static;max-height:none}
   };
   function syncMode(){
     var m=MODES[mode],ta=$('say');
+    /* On a computer, talking goes through the computer's own dictation, which types into the box */
+    if(mode==='speak'&&window.cactusNative){
+      var mac=/Mac/i.test(navigator.platform||navigator.userAgent);
+      m=Object.assign({},m,{placeholder:mac?'Press the microphone key (or Fn twice), then talk…':'Press Windows key + H, then talk…',
+        help:(mac?'Click in the box, then press the microphone key on your keyboard (or press Fn / 🌐 twice). If nothing happens, turn on Dictation once in System Settings → Keyboard. ':'Click in the box, then press the Windows key + H to start voice typing. ')+
+          'Talk the way you would to a person and say the whole thing in one go. When you stop for a couple of seconds it saves what you said, or press Enter. Say prices as plain numbers, like “fifty”.'});
+    }
     [].forEach.call(document.querySelectorAll('[data-mode]'),function(b){b.setAttribute('aria-pressed',b.getAttribute('data-mode')===mode?'true':'false')});
     ta.placeholder=m.placeholder;ta.className=mode==='speak'?'speak':'';
     $('sayhelp').textContent=m.help;
@@ -2302,7 +2309,7 @@ body.sheetview .prompts{position:static;max-height:none}
   function growSay(){var ta=$('say');if(!ta)return;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight+2,Math.round(window.innerHeight*0.6))+'px'}
   $('say').addEventListener('input',growSay);
   $('say').addEventListener('keydown',function(e){
-    if(mode==='type'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();viaEnter=true;$('go').click()}
+    if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();viaEnter=true;$('go').click()}
   });
   try{var sm=localStorage.getItem('cactus-mode');if(sm==='speak'||sm==='type')mode=sm}catch(e){}
   syncMode();
