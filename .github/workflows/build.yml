@@ -56,6 +56,21 @@ jobs:
           export SP_SMOKE_FILE="$RUNNER_TEMP/smoke.txt"
           "$exe" --smoke-test || true
           cat "$SP_SMOKE_FILE"; grep -q "SMOKE TEST OK" "$SP_SMOKE_FILE"
+      - name: Check the Mac download itself (signature intact, app inside opens)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          dmg=$(ls dist/*-arm64.dmg | head -1); echo "Checking $dmg"
+          hdiutil verify "$dmg"
+          mnt=$(mktemp -d); hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
+          app=$(ls -d "$mnt"/*.app | head -1); ls "$mnt"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E "Identifier|Signature|flags" || true
+          cp -R "$app" "$RUNNER_TEMP/"; hdiutil detach "$mnt" >/dev/null
+          export SP_SMOKE_FILE="$RUNNER_TEMP/smoke-dmg.txt"
+          "$RUNNER_TEMP/$(basename "$app")/Contents/MacOS/$(basename "$app" .app)" --smoke-test || true
+          cat "$SP_SMOKE_FILE"; grep -q "SMOKE TEST OK" "$SP_SMOKE_FILE"
       - name: Share the test report
         if: always()
         shell: bash

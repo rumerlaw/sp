@@ -174,7 +174,13 @@ ipcMain.handle('write', async (e, p, bytes) => {
 
 /* Only one copy of the app runs at a time, so two windows never save over each other. */
 if (!app.requestSingleInstanceLock()) { app.quit(); }
-app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
+/* Opening the app again always brings up a window, even if the old one was closed. */
+app.on('second-instance', () => {
+  if (!app.isReady()) return;
+  const w = BrowserWindow.getAllWindows()[0];
+  if (!w) { createWindow(); return; }
+  if (w.isMinimized()) w.restore(); w.show(); w.focus();
+});
 
 app.whenReady().then(() => {
   loadAllowed();
@@ -206,4 +212,5 @@ app.on('web-contents-created', (e, contents) => {
   contents.on('will-attach-webview', (ev) => ev.preventDefault());
   contents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+/* Closing the window quits the app on Mac too, so it never keeps running hidden in the background. */
+app.on('window-all-closed', () => app.quit());
