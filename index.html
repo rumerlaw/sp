@@ -1298,6 +1298,8 @@ body.sheetview .prompts{position:static;max-height:none}
      save, and let go of it. Stock changes are applied as +/- amounts, so two people selling the
      same plant add together. */
   var F=null,QTY_KEYS=['qty','soldQty','soldRev','soldCost'],queue=Promise.resolve(),busy=0,lastMtime=0,lastSaved=null,errMsg='';
+  /* the desktop app asks this before closing, and waits until every change is saved */
+  window.__spBusy=function(){return busy>0};
   function showSync(){
     var el=$('sync');
     if(errMsg){el.hidden=false;el.className='syncbar';el.textContent=errMsg;return}

@@ -52,6 +52,20 @@ function createWindow() {
     }
   });
   win.setMenuBarVisibility(false);
+  /* Closing waits (up to 15 seconds) until any change still being saved is in the spreadsheet. */
+  let closeOk = false;
+  win.on('close', (e) => {
+    if (closeOk || SMOKE) return;
+    e.preventDefault();
+    const start = Date.now();
+    const tryClose = async () => {
+      let busy = false;
+      try { busy = await Promise.race([win.webContents.executeJavaScript('!!(window.__spBusy&&window.__spBusy())', true), new Promise((r) => setTimeout(() => r(false), 2000))]); } catch (err) { busy = false; }
+      if (busy && Date.now() - start < 15000) { setTimeout(tryClose, 200); return; }
+      closeOk = true; if (!win.isDestroyed()) win.close();
+    };
+    tryClose();
+  });
   /* The window can only ever show this app's own page. Links go to the normal browser. */
   win.webContents.on('will-navigate', (e, url) => { e.preventDefault(); if (/^https:\/\//i.test(url)) shell.openExternal(url); });
   win.webContents.on('will-redirect', (e) => e.preventDefault());
