@@ -1330,7 +1330,43 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   function parseXml(t){return new DOMParser().parseFromString(t,'application/xml')}
   function kids(n,name){var o=[];for(var c=n.firstChild;c;c=c.nextSibling)if(c.nodeType===1&&c.localName===name)o.push(c);return o}
   function txt(n){var o='';(function w(x){for(var c=x.firstChild;c;c=c.nextSibling){if(c.nodeType===3)o+=c.nodeValue;else if(c.nodeType===1&&c.localName!=='rPh')w(c)}})(n);return o}
+  /* A plain-text list (CSV) saved with an .xlsx name: turn it into a real workbook in memory,
+     then read it the normal way, so it goes through the Convert screen (with a backup first). */
+  function isZip(b){return b&&b.length>3&&b[0]===0x50&&b[1]===0x4b}
+  function parseCsv(t){
+    t=t.replace(/^\uFEFF/,'');
+    var first=t.split(/\r?\n/)[0]||'',sep=[',',';','\t'].sort(function(x,y){return first.split(y).length-first.split(x).length})[0];
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<t.length;i++){
+      var c=t[i];
+      if(q){if(c==='"'){if(t[i+1]==='"'){cell+='"';i++}else q=false}else cell+=c}
+      else if(c==='"'&&cell==='')q=true;
+      else if(c===sep){row.push(cell);cell=''}
+      else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell=''}
+      else cell+=c;
+    }
+    if(cell!==''||row.length){row.push(cell);rows.push(row)}
+    return rows.filter(function(r){return r.some(function(v){return String(v).trim()!==''})});
+  }
+  async function textToXlsx(bytes){
+    var t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(bytes)}catch(e){throw new Error('This file is not an Excel workbook.')}
+    if(/\u0000/.test(t.slice(0,2000)))throw new Error('This file is not an Excel workbook.');
+    var rows=parseCsv(t);if(!rows.length||rows[0].length<2)throw new Error('This file is not an Excel workbook.');
+    var NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main',R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    var body=rows.map(function(r,ri){return '<row r="'+(ri+1)+'">'+r.map(function(v,ci){
+      var ref=colL(ci)+(ri+1),x=String(v).trim();
+      if(ri>0&&/^-?\d+(\.\d+)?$/.test(x))return '<c r="'+ref+'"><v>'+x+'</v></c>';
+      return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xe(v)+'</t></is></c>'}).join('')+'</row>'}).join('');
+    var z=new JSZip();
+    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
+    z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+    z.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="'+NS+'" xmlns:r="'+R+'"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>');
+    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>');
+    z.file('xl/worksheets/sheet1.xml','<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="'+NS+'"><sheetData>'+body+'</sheetData></worksheet>');
+    return z.generateAsync({type:'uint8array'});
+  }
   async function readXlsx(bytes){
+    if(!isZip(bytes))bytes=await textToXlsx(bytes);
     var z=await JSZip.loadAsync(bytes),by={cactus:[],pot:[]};
     async function get(p){var f=z.file(p.replace(/^\//,''));return f?f.async('string'):null}
     var wb=await get('xl/workbook.xml');if(!wb)throw new Error('This file is not an Excel workbook.');
@@ -2310,10 +2346,12 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   });
   $('s-refresh').addEventListener('click',async function(){try{await loadFresh();publish();say('Reloaded from the spreadsheet.')}catch(e){fail(e)}});
   $('s-switch').addEventListener('click',function(){F=null;db=null;convertOk=false;backedUpFor=null;encPw=null;try{localStorage.removeItem('cactus-xl-path')}catch(e){}showSetup('Choose the spreadsheet to use.')});
-  dlApi={save:function(o){
-    var b=new Blob([o.data],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
-    a.href=URL.createObjectURL(b);a.download=o.filename;document.body.appendChild(a);a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);return Promise.resolve({status:'saved'});
+  /* "Download spreadsheet" saves a real Excel copy (.xlsx) of the current stock, never a text file. */
+  dlApi={save:async function(o){
+    var data=await buildXlsx(rawToBy(rawList)),name=String(o.filename||'stock.xlsx').replace(/^stock-/,'SP Inventory copy ').replace(/\.csv$/i,'')+'.xlsx';
+    var b=new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);return {status:'saved'};
   }};
   (async function(){
     if(IS_NATIVE){
