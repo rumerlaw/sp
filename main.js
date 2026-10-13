@@ -8,6 +8,8 @@ const os = require('os');
 const SMOKE = process.argv.includes('--smoke-test');
 const SMOKE_DIR = path.join(os.tmpdir(), 'sp-smoke-' + process.pid);
 const blocked = [];
+/* each test run starts like a brand-new install, with nothing remembered */
+if (SMOKE) app.setPath('userData', path.join(SMOKE_DIR, 'profile'));
 const SMOKE_XLSX = path.join(SMOKE_DIR, 'Smoke Test.xlsx');
 const FILTERS = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
 
