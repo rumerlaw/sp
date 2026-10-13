@@ -390,7 +390,7 @@ body.sheetview .prompts{position:static;max-height:none}
       <h1>SP Inventory</h1>
       <p class="sub" id="sub">Loading your plants…</p>
     </div>
-    <button class="btn small" id="sharebtn" type="button" hidden>File: <span id="fname"></span></button>
+    <button class="btn small" id="sharebtn" type="button" hidden>File: <span id="fname"></span><span id="localwarn" hidden style="color:var(--bloom);font-weight:700"> · not in Dropbox</span></button>
     <button class="btn small" id="theme" type="button" aria-label="Switch between light and dark mode">Light mode</button>
   </header>
 
@@ -398,6 +398,8 @@ body.sheetview .prompts{position:static;max-height:none}
   <section class="addbox" id="sharebox" hidden style="padding:12px;margin-bottom:12px">
     <p><strong>Shared spreadsheet</strong></p>
     <p class="fine">This list lives in the Excel file <strong id="s-file"></strong>. Every change opens it, updates it, saves it and closes it again. Other people using the app see your changes within a few seconds (once your cloud folder has synced the file).</p>
+    <p class="fine" id="s-where" style="word-break:break-all"></p>
+    <p class="msg err" id="s-warn" hidden>This spreadsheet is only on this computer. It is not in your Dropbox folder, so other people and Dropbox do not see these changes. Click “Use a different file” and pick the spreadsheet inside your Dropbox folder.</p>
     <p class="fine" id="s-saved"></p>
     <p class="fine" style="margin-top:8px">The first time something changes each time you open the app, a copy of the spreadsheet is saved in the <strong>Backups</strong> folder next to it, inside a folder for the month (for example Backups › 2026-10 October › Oct 13 5-31 PM backup.xlsx).</p>
     <p class="fine" id="s-backup" style="margin-top:6px"></p>
@@ -507,7 +509,7 @@ body.sheetview .prompts{position:static;max-height:none}
   /* ---------- plant knowledge: genus from a plant's name ---------- */
   var GENERA=('acanthocalycium acanthocereus ancistrocactus aporocactus ariocarpus armatocereus arrojadoa arthrocereus astrophytum austrocactus austrocylindropuntia aylostera aztekium bergerocactus blossfeldia borzicactus brachycereus browningia carnegiea cephalocereus cereus cintia cipocereus cleistocactus coleocephalocereus consolea copiapoa corryocactus coryphantha cumulopuntia cylindropuntia denmoza discocactus disocactus echinocactus echinocereus echinomastus echinopsis epiphyllum epithelantha eriosyce escobaria espostoa espostoopsis eulychnia ferocactus frailea geohintonia gymnocalycium haageocereus hamatocactus harrisia hatiora hylocereus kroenleinia lepismium leptocereus leuchtenbergia lobivia lophocereus lophophora maihuenia maihueniopsis mammillaria matucana melocactus micranthocereus mila myrtillocactus neobuxbaumia neolloydia neoporteria neoraimondia neowerdermannia notocactus obregonia opuntia oreocereus oroya ortegocactus pachycereus parodia pediocactus pelecyphora peniocereus pereskia pereskiopsis pilosocereus polaskia pterocactus pygmaeocereus rebutia rhipsalis schlumbergera sclerocactus selenicereus soehrensia stenocactus stenocereus stephanocereus stetsonia strombocactus sulcorebutia tacinga tephrocactus thelocactus trichocereus turbinicarpus uebelmannia weberbauerocereus weberocereus yavia '+
     'adenia adenium adromischus aeonium agave aloe aloinopsis anacampseros argyroderma astroloba avonia beaucarnea bowiea brachystelma bryophyllum bulbine bursera calibanus caralluma carpobrotus cephalophyllum ceropegia cheiridopsis conophytum cotyledon crassula curio cyphostemma dasylirion delosperma didierea dinteranthus dioscorea dorstenia dracaena dudleya echeveria euphorbia faucaria fenestraria fockea frithia furcraea gasteria gibbaeum glottiphyllum graptopetalum graptoveria haworthia haworthiopsis hechtia hesperaloe hoodia hoya huernia jatropha jovibarba kalanchoe lapidaria lithops mangave manfreda monadenium monanthes nolina orbea orostachys othonna pachyphytum pachypodium pachyveria pedilanthus pelargonium peperomia pleiospilos portulaca portulacaria pseudolithos rhombophyllum rosularia sansevieria sedeveria sedum sempervivum senecio sinocrassula stapelia stomatium tavaresia titanopsis trichodiadema tylecodon uncarina welwitschia yucca zamioculcas '+
-    'aglaonema alocasia anthurium aspidistra begonia bromelia calathea chlorophytum ctenanthe cycas dieffenbachia epipremnum ficus guzmania maranta monstera philodendron pilea schefflera spathiphyllum strelitzia syngonium tillandsia zamia ').trim().split(/\s+/);
+    'aglaonema alocasia anthurium aspidistra begonia bromelia calathea chlorophytum ctenanthe cycas dieffenbachia epipremnum ficus guzmania maranta monstera philodendron pilea schefflera spathiphyllum strelitzia syngonium tillandsia zamia  ipomoea operculicarya commiphora boswellia fouquieria pachycormus sinningia raphionacme stephania cissus kedrostis gerrardanthus cylindrophyllum ').trim().split(/\s+/);
   var GENSET={};GENERA.forEach(function(g){GENSET[g]=1});
   var COMMON=[['golden barrel','Echinocactus'],['bunny ear','Opuntia'],['prickly pear','Opuntia'],['beavertail','Opuntia'],['teddy bear cholla','Cylindropuntia'],['cholla','Cylindropuntia'],['old man','Cephalocereus'],['blue torch','Pilosocereus'],['saguaro','Carnegiea'],['christmas cactus','Schlumbergera'],['thanksgiving cactus','Schlumbergera'],['easter cactus','Hatiora'],['moon cactus','Gymnocalycium'],['star cactus','Astrophytum'],['bishop','Astrophytum'],['peyote','Lophophora'],['fishhook','Ferocactus'],['barrel cactus','Ferocactus'],['hedgehog','Echinocereus'],['pincushion','Mammillaria'],['rat tail','Disocactus'],['dragon fruit','Selenicereus'],['totem pole','Lophocereus'],['organ pipe','Stenocereus'],['san pedro','Trichocereus'],['peruvian torch','Trichocereus'],['trich','Trichocereus'],['fairy castle','Acanthocereus'],['eves needle','Austrocylindropuntia'],['eve needle','Austrocylindropuntia'],['desert rose','Adenium'],['jade','Crassula'],['snake plant','Sansevieria'],['string of pearl','Curio'],['string of banana','Curio'],['burro','Sedum'],['donkey tail','Sedum'],['hens and chick','Sempervivum'],['living stone','Lithops'],['panda plant','Kalanchoe'],['paddle plant','Kalanchoe'],['mother of thousand','Kalanchoe'],['ponytail palm','Beaucarnea'],['zz plant','Zamioculcas'],['century plant','Agave'],['elephant bush','Portulacaria'],['pencil cactus','Euphorbia'],['crown of thorn','Euphorbia'],['ghost plant','Graptopetalum'],['ice plant','Delosperma'],['red yucca','Hesperaloe'],['air plant','Tillandsia'],['madagascar palm','Pachypodium'],['zebra plant','Haworthiopsis'],['aloe vera','Aloe'],['pothos','Epipremnum'],['rubber plant','Ficus'],['fiddle leaf','Ficus'],['swiss cheese','Monstera'],['spider plant','Chlorophytum'],['peace lily','Spathiphyllum'],['bird of paradise','Strelitzia'],['cast iron','Aspidistra'],['chinese money','Pilea'],['sago palm','Cycas'],['money tree','Pachira']];
   function capG(g){return g.charAt(0).toUpperCase()+g.slice(1).toLowerCase()}
@@ -538,6 +540,8 @@ body.sheetview .prompts{position:static;max-height:none}
     n=n.replace(/\bmonstros[ae]?\b/ig,'Monstrose');
     /* "Cerus" + "Forbesii monstros": the genus word ended up as the name; put it back together first */
     if(!/\s/.test(n)&&genusOfWord(n)&&/\s/.test(g)&&!genusOfWord(g.split(/\s+/)[0])){n=n+' '+g;g=''}
+    /* name "Cyphostemma", genus "juttae": the genus was typed as the name and the species as the genus */
+    else if(!/\s/.test(n)&&genusOfWord(n)&&/^[a-z][a-z-]{2,}$/i.test(g)&&!genusOfWord(g)){var g2=genusOfWord(n);n=g.charAt(0).toUpperCase()+g.slice(1);g=g2}
     var w=n.split(' '),gw=g.split(/\s+/)[0]||'';
     if(w.length>1&&!/[\/\\]/.test(w[0])&&!/^[x×]$/i.test(w[1])){
       var fg=genusOfWord(w[0]),match=null;
@@ -1310,7 +1314,7 @@ body.sheetview .prompts{position:static;max-height:none}
   function mapItem(id,x){
     return fixPlant({id:id,name:String(x.name||id),genus:x.genus||guessGenus(x.name)||'',vendor:x.vendor||'',cost:Number(x.cost)||0,price:Number(x.price)||0,
       qty:Math.max(0,Math.round(Number(x.qty)||0)),reorderAt:x.reorderAt==null?1:Number(x.reorderAt)||0,
-      reorderQty:Number(x.reorderQty)||3,onOrder:Number(x.onOrder)||0,onOrderHow:x.onOrderHow==='inperson'?'inperson':'order',
+      reorderQty:Number(x.reorderQty)||1,onOrder:Number(x.onOrder)||0,onOrderHow:x.onOrderHow==='inperson'?'inperson':'order',
       snoozedQty:x.snoozedQty==null?null:Number(x.snoozedQty),example:!!x.example,kind:'item',bundled:false,
       category:String(x.category||'').trim()||(x.kind==='pot'?'Pots':(x.kind==='cactus'?'Plants':''))||guessCategory(x.name,x.genus),
       soldQty:Number(x.soldQty)||0,soldRev:Number(x.soldRev)||0,soldCost:Number(x.soldCost)||0});
@@ -1330,7 +1334,8 @@ body.sheetview .prompts{position:static;max-height:none}
     showSync();say(errMsg,true);
   }
   /* ---- spreadsheet file <-> list of items ---- */
-  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['onOrder','On order'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Value at cost'],['_vs','Value at sale'],['_pf','Profit if sold'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
+  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Value at cost'],['_vs','Value at sale'],['_pf','Profit if sold'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
+  var NVIS=14;function CL(k){for(var i=0;i<COLS.length;i++)if(COLS[i][0]===k)return colL(i);return 'A'}
   function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
   function colN(ref){var m=String(ref).match(/^([A-Z]+)/);if(!m)return -1;var n=0;for(var i=0;i<m[1].length;i++)n=n*26+(m[1].charCodeAt(i)-64);return n-1}
   function xe(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'')}
@@ -1343,19 +1348,30 @@ body.sheetview .prompts{position:static;max-height:none}
   function cNum(r,c,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+'><v>'+(isFinite(v)?v:0)+'</v></c>'}
   function cFor(r,c,f,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+'><f>'+xe(f)+'</f><v>'+(isFinite(v)?v:0)+'</v></c>'}
   function sheetXml(list){
+    var C=function(k){for(var i=0;i<COLS.length;i++)if(COLS[i][0]===k)return i;return 0};
     var rows='<row r="1" ht="30" customHeight="1">';
     COLS.forEach(function(c,i){rows+=cStr(1,i,c[1],1)});
     rows+='</row>';
     list.forEach(function(it,n){
-      var r=n+2,vc=it.qty*it.cost,vs=it.qty*it.price,pm=it.soldRev-it.soldCost;
-      rows+='<row r="'+r+'">'+cStr(r,0,it.name,0)+cStr(r,1,it.category||'',0)+cStr(r,2,it.genus||'',0)+cStr(r,3,it.vendor||'',0)+cNum(r,4,it.cost,2)+cNum(r,5,it.price,2)+cNum(r,6,it.qty,3)+cNum(r,7,it.reorderAt,3)+cNum(r,8,it.reorderQty,3)+cNum(r,9,it.onOrder,3)+cNum(r,10,it.soldQty,3)+
-        cFor(r,11,'P'+r+'-Q'+r,pm,2)+cFor(r,12,'E'+r+'*G'+r,vc,2)+cFor(r,13,'F'+r+'*G'+r,vs,2)+cFor(r,14,'N'+r+'-M'+r,vs-vc,2)+
-        cNum(r,15,it.soldRev,2)+cNum(r,16,it.soldCost,2)+cStr(r,17,it.id,0)+cStr(r,18,it.onOrderHow||'',0)+(it.snoozedQty==null?'':cNum(r,19,it.snoozedQty,3))+cStr(r,20,it.example?'yes':'',0)+'</row>';
+      var r=n+2,vc=it.qty*it.cost,vs=it.qty*it.price,pm=it.soldRev-it.soldCost,L=function(k){return CL(k)+r};
+      var cells=[cStr(r,C('name'),it.name,0),cStr(r,C('category'),it.category||'',0),cStr(r,C('genus'),it.genus||'',0),cStr(r,C('vendor'),it.vendor||'',0),
+        cNum(r,C('cost'),it.cost,2),cNum(r,C('price'),it.price,2),cNum(r,C('qty'),it.qty,3),cNum(r,C('reorderAt'),it.reorderAt,3),cNum(r,C('reorderQty'),it.reorderQty,3),cNum(r,C('soldQty'),it.soldQty,3),
+        cFor(r,C('_pm'),L('soldRev')+'-'+L('soldCost'),pm,2),cFor(r,C('_vc'),L('cost')+'*'+L('qty'),vc,2),cFor(r,C('_vs'),L('price')+'*'+L('qty'),vs,2),cFor(r,C('_pf'),L('_vs')+'-'+L('_vc'),vs-vc,2),
+        cNum(r,C('soldRev'),it.soldRev,2),cNum(r,C('soldCost'),it.soldCost,2),cNum(r,C('onOrder'),it.onOrder,3),cStr(r,C('id'),it.id,0),cStr(r,C('onOrderHow'),it.onOrderHow||'',0),
+        (it.snoozedQty==null?'':cNum(r,C('snoozedQty'),it.snoozedQty,3)),cStr(r,C('example'),it.example?'yes':'',0)];
+      rows+='<row r="'+r+'">'+cells.join('')+'</row>';
     });
-    var last=Math.max(2,list.length+1);
-    var widths=[28,14,20,22,11,11,10,10,12,10,11,14,13,13,13,12,12,18,10,10,9];
-    var cols='<cols>'+widths.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"'+(i>=15?' hidden="1"':'')+'/>'}).join('')+'</cols>';
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+rows+'</sheetData><autoFilter ref="A1:O'+last+'"/></worksheet>';
+    /* totals at the bottom (the app skips this row when it reads the file) */
+    var last=Math.max(2,list.length+1),tr=last+1,T={qty:0,soldQty:0,_pm:0,_vc:0,_vs:0,_pf:0};
+    list.forEach(function(it){T.qty+=it.qty;T.soldQty+=it.soldQty;T._pm+=it.soldRev-it.soldCost;T._vc+=it.qty*it.cost;T._vs+=it.qty*it.price;T._pf+=it.qty*(it.price-it.cost)});
+    var tot='<row r="'+tr+'" ht="22" customHeight="1">'+cStr(tr,C('name'),'Total',8);
+    for(var ci=1;ci<NVIS;ci++){var k=COLS[ci][0];
+      if(k in T)tot+=cFor(tr,ci,'SUM('+colL(ci)+'2:'+colL(ci)+last+')',T[k],(k==='qty'||k==='soldQty')?7:6);
+      else tot+='<c r="'+colL(ci)+tr+'" s="8"/>';}
+    rows+=tot+'</row>';
+    var widths=[28,14,20,22,11,11,10,10,12,11,14,13,13,13,12,12,10,18,10,10,9];
+    var cols='<cols>'+widths.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"'+(i>=NVIS?' hidden="1"':'')+'/>'}).join('')+'</cols>';
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+rows+'</sheetData><autoFilter ref="A1:'+colL(NVIS-1)+last+'"/></worksheet>';
   }
   function sumXml(list){
     var rows='<row r="1" ht="26" customHeight="1">'+cStr(1,0,'SP Inventory summary',4)+'</row><row r="3">';
@@ -1367,14 +1383,14 @@ body.sheetview .prompts{position:static;max-height:none}
     var S="'Stock'!",rng=function(L){return S+L+'2:'+L+'5000'},T={n:0,q:0,vc:0,vs:0,sq:0,pm:0};
     order.forEach(function(k,i){
       var r=4+i,a=by[k],key='$A'+r;
-      rows+='<row r="'+r+'">'+cStr(r,0,k,0)+cFor(r,1,'COUNTIF('+rng('B')+','+key+')',a.n,3)+cFor(r,2,'SUMIF('+rng('B')+','+key+','+rng('G')+')',a.q,3)+cFor(r,3,'SUMIF('+rng('B')+','+key+','+rng('M')+')',a.vc,2)+cFor(r,4,'SUMIF('+rng('B')+','+key+','+rng('N')+')',a.vs,2)+cFor(r,5,'E'+r+'-D'+r,a.vs-a.vc,2)+cFor(r,6,'SUMIF('+rng('B')+','+key+','+rng('K')+')',a.sq,3)+cFor(r,7,'SUMIF('+rng('B')+','+key+','+rng('L')+')',a.pm,2)+'</row>';
+      var cB=CL('category');rows+='<row r="'+r+'">'+cStr(r,0,k,0)+cFor(r,1,'COUNTIF('+rng(cB)+','+key+')',a.n,3)+cFor(r,2,'SUMIF('+rng(cB)+','+key+','+rng(CL('qty'))+')',a.q,3)+cFor(r,3,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vc'))+')',a.vc,2)+cFor(r,4,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vs'))+')',a.vs,2)+cFor(r,5,'E'+r+'-D'+r,a.vs-a.vc,2)+cFor(r,6,'SUMIF('+rng(cB)+','+key+','+rng(CL('soldQty'))+')',a.sq,3)+cFor(r,7,'SUMIF('+rng(cB)+','+key+','+rng(CL('_pm'))+')',a.pm,2)+'</row>';
       ['n','q','vc','vs','sq','pm'].forEach(function(f){T[f]+=a[f]});
     });
     var tr=4+order.length,first=4,lastR=Math.max(4,tr-1);
     rows+='<row r="'+tr+'">'+cStr(tr,0,'Total',5)+['B','C','D','E','F','G','H'].map(function(L,i){var v=[T.n,T.q,T.vc,T.vs,T.vs-T.vc,T.sq,T.pm][i];return cFor(tr,i+1,'SUM('+L+first+':'+L+lastR+')',v,(i===0||i===1||i===5)?3:2)}).join('')+'</row>';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="8" width="17" customWidth="1"/></cols><sheetData>'+rows+'</sheetData></worksheet>';
   }
-  var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6B3A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>';
+  var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6B3A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top style="medium"/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="1" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/></cellXfs></styleSheet>';
   async function buildXlsx(by){
     var z=new JSZip();
     z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>');
@@ -1928,7 +1944,7 @@ body.sheetview .prompts{position:static;max-height:none}
           if(st.cost!=null)doc2.cost=st.cost;if(st.price!=null)doc2.price=st.price;if(st.genus&&st.genus!==st.item.genus&&genusOfWord(String(st.genus).split(/\s+/)[0]))doc2.genus=st.genus;if(st.vendor&&!st.item.vendor)doc2.vendor=st.vendor;
           okAll=await guard(function(){return ref(st.item.id).update(doc2)});
         }else{
-          doc2={name:st.pend.name,category:st.pend.category,genus:st.pend.genus,vendor:st.pend.vendor||'',cost:st.pend.cost,price:st.pend.price,qty:st.pend.qty,reorderAt:1,reorderQty:3,onOrder:0,snoozedQty:null};
+          doc2={name:st.pend.name,category:st.pend.category,genus:st.pend.genus,vendor:st.pend.vendor||'',cost:st.pend.cost,price:st.pend.price,qty:st.pend.qty,reorderAt:1,reorderQty:1,onOrder:0,snoozedQty:null};
           okAll=await guard(function(){return ref(freshId(st.pend.name)).set(doc2)});
         }
       }
@@ -1942,7 +1958,7 @@ body.sheetview .prompts{position:static;max-height:none}
       if(await guard(function(){return ref(p.item.id).update(sp)}))say('Saved. '+fullName(p.item)+' '+LABEL[p.field]+' is now '+showVal(p.field,p.value)+'.');
     }else{
       var id=freshId(p.name);
-      var doc={name:p.name,category:p.category,genus:p.genus,vendor:p.vendor||'',cost:p.cost,price:p.price,qty:p.qty,reorderAt:1,reorderQty:3,onOrder:0,snoozedQty:null};
+      var doc={name:p.name,category:p.category,genus:p.genus,vendor:p.vendor||'',cost:p.cost,price:p.price,qty:p.qty,reorderAt:1,reorderQty:1,onOrder:0,snoozedQty:null};
       if(await guard(function(){return ref(id).set(doc)}))say('Saved. '+p.name+' added with '+p.qty+' in stock'+(p.cost?', '+money(p.cost)+' each'+(p.costTotal!=null?' ('+money(p.costTotal)+' for all '+p.qty+')':''):'')+'.'+((p.price)?'':' No sell price yet, so profit will show negative. Say “set '+p.name.toLowerCase()+' price to 8”.'));
     }
     pending=null;$('confirm').innerHTML='';$('say').value='';
@@ -2135,7 +2151,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var N=function(v){return Math.max(0,Number(v)||0)};
     var ra=$('a-ra').value===''?1:Math.round(N($('a-ra').value));
     var gA=genusText($('a-genus').value||sp.sci)||guessGenus(nm);
-    var doc={name:nm,category:String($('a-cat').value||'').trim()||guessCategory(nm,gA),genus:gA,vendor:vA,cost:N($('a-cost').value),price:N($('a-price').value),qty:Math.round(N($('a-qty').value)),reorderAt:ra,reorderQty:3,onOrder:0,snoozedQty:null};
+    var doc={name:nm,category:String($('a-cat').value||'').trim()||guessCategory(nm,gA),genus:gA,vendor:vA,cost:N($('a-cost').value),price:N($('a-price').value),qty:Math.round(N($('a-qty').value)),reorderAt:ra,reorderQty:1,onOrder:0,snoozedQty:null};
     if(await guard(function(){return ref(freshId(nm)).set(doc)})){
       say('Saved. '+nm+' added with '+doc.qty+' in stock.');
       $('addform').reset();$('a-ra').value='1';$('a-name').focus();
@@ -2217,7 +2233,7 @@ body.sheetview .prompts{position:static;max-height:none}
       var ex=[['Golden Barrel','Echinocactus',6,15,5],['Old Man Cactus','Cephalocereus',4.5,12,15],['Bunny Ears','Opuntia',3,9,25]];
       for(var i=0;i<ex.length;i++){
         var x=ex[i];
-        if(!await guard(function(){return ref(slug(x[0])).set({name:x[0],genus:x[1],cost:x[2],price:x[3],qty:x[4],reorderAt:1,reorderQty:3,onOrder:0,snoozedQty:null,category:'Plants',example:true})}))break;
+        if(!await guard(function(){return ref(slug(x[0])).set({name:x[0],genus:x[1],cost:x[2],price:x[3],qty:x[4],reorderAt:1,reorderQty:1,onOrder:0,snoozedQty:null,category:'Plants',example:true})}))break;
       }
       say('Example plants added. Try saying “sold 3 golden barrel”.');return;
     }
@@ -2379,9 +2395,17 @@ body.sheetview .prompts{position:static;max-height:none}
     if(IS_NATIVE){try{localStorage.setItem('cactus-xl-path',file.path)}catch(e){}}else{await rememberFile(file.handle)}
     if(foreign()){askConvert();return}
     db=file;$('setup').hidden=true;$('app').hidden=false;
-    $('sharebtn').hidden=false;$('fname').textContent=file.name;
+    $('sharebtn').hidden=false;$('fname').textContent=file.name;showWhere();
     if(F.path!==backedUpFor&&F.name!==backedUpFor)sessionNew=true;
     publish();startWatch();
+    try{
+      var k1='sp-all-1:'+(F.path||F.name);
+      if(IS_NATIVE&&canWrite&&!localStorage.getItem(k1)&&rawList.some(function(x){return Number(x.reorderAt)!==1||Number(x.reorderQty)!==1})){
+        localStorage.setItem(k1,'1');
+        await commit(function(){rawList.forEach(function(x){x.reorderAt=1;x.reorderQty=1;x.snoozedQty=null})});
+        say('Every product is now set to Remind at 1 and Usual reorder 1.');
+      }else localStorage.setItem(k1,'1');
+    }catch(e){}
   }
   var watching=false;
   function askUnlock(){
@@ -2454,8 +2478,15 @@ body.sheetview .prompts{position:static;max-height:none}
     $('sharebox').hidden=!$('sharebox').hidden;
     $('s-file').textContent=F?F.name:'';
     $('s-saved').textContent=lastSaved?('Last saved by this device at '+fmtTime(lastSaved)+'.'):'';
-    showBackupInfo();
+    showBackupInfo();showWhere();
   });
+  function inCloud(p){return /dropbox|onedrive|google ?drive|icloud|CloudStorage|Mobile Documents|box sync/i.test(String(p||''))}
+  function showWhere(){
+    var w=$('s-where'),warn=IS_NATIVE&&F&&F.path&&!inCloud(F.path);
+    if(w){w.textContent=F&&F.path?('Where it is: '+F.path):'';}
+    var wb=$('s-warn');if(wb)wb.hidden=!warn;
+    var lw=$('localwarn');if(lw)lw.hidden=!warn;
+  }
   function showBackupInfo(){
     var el=$('s-backup');if(!el)return;
     el.textContent=backupErr?('The backup copy could not be made this time: '+backupErr):
