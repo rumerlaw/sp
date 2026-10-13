@@ -273,6 +273,20 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
 .undos .btn span{font-size:17px;line-height:1}
 
 /* ---------- light mode: soft, warm and easy on the eyes ---------- */
+/* spreadsheet: headings stay at the top while scrolling down; the name column stays put and is shaded when scrolling sideways */
+.sheetwrap{max-height:calc(100vh - 90px);overflow:auto;overscroll-behavior:contain}
+.sheet thead th{position:sticky;top:0;z-index:2;background:var(--surface)}
+.sheet thead th.c1{left:0;z-index:4}
+.sheet td.c1{position:sticky;left:0;z-index:1}
+.sheet tfoot td{position:sticky;bottom:0;z-index:2;background:var(--surface);border-top:1px solid var(--line2)}
+.sheet tfoot td.c1{left:0;z-index:3}
+.sheetwrap.sx .sheet td.c1,.sheetwrap.sx .sheet th.c1,.sheetwrap.sx .sheet tfoot td.c1{box-shadow:6px 0 10px -6px rgba(0,0,0,.55);border-right:1px solid var(--line2)}
+:root:not([data-theme="light"]) .sheet td.c1,:root:not([data-theme="light"]) .sheet th.c1,:root:not([data-theme="light"]) .sheet tfoot td.c1{background:#070B08}
+:root:not([data-theme="light"]) .sheet thead th{background:#0C120E}
+:root[data-theme="light"] .sheet td.c1,:root[data-theme="light"] .sheet th.c1,:root[data-theme="light"] .sheet tfoot td.c1{background:#CDD2C8}
+:root[data-theme="light"] .sheet thead th{background:#D5D9D0}
+/* in the spreadsheet the reminder box scrolls away, so it never covers the headings */
+body.sheetview .prompts{position:static;max-height:none}
 /* numbers centered */
 .sheet th.n,.sheet td.n,.sheet input[type=number]{text-align:center}
 .sheet td:has(> input[type=number]),.sheet td:has(> .hidcell){text-align:center}
@@ -760,6 +774,8 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     edit=null;delAsk=null;pending=null;rc=null;
     applyCat();render();
   }
+  /* shade the name column once the spreadsheet is scrolled sideways */
+  document.addEventListener('scroll',function(e){var t=e.target;if(t&&t.classList&&t.classList.contains('sheetwrap'))t.classList.toggle('sx',t.scrollLeft>2)},true);
   $('cats').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-cat]');if(b)setCat(b.getAttribute('data-cat'))});
   try{var sc=localStorage.getItem('cactus-cat');if(sc)cat=sc}catch(e){}
   function render(){
@@ -798,6 +814,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var vis=visible(list);
     $('count').textContent=vis.length===list.length?'':('Showing '+vis.length+' of '+list.length);
     if(!vis.length){box.innerHTML='<div class="empty"><p>No plants match “'+h(query)+'”.</p></div>';return}
+    document.body.classList.toggle('sheetview',view==='sheet');
     if(view==='sheet'){
       var key=vis.map(function(i){return i.id}).join('|')+'#'+hideSig();
       var tb=box.querySelector('table.sheet');
@@ -877,7 +894,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     return '<div class="sheetwrap"><table class="sheet" data-key="'+h(key)+'"><thead><tr>'+
       '<th class="c1">Name</th><th>Category</th>'+th('genus','Genus / type','')+''+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+th('reorderAt','Remind at','n')+
       th('vc','Value at cost','n')+th('vs','Value at sale','n')+th('pf','Profit if sold','n')+'<th>Sold / add</th></tr></thead>'+
-      '<tbody>'+rows+'</tbody><tfoot><tr><td colspan="6">Total of rows shown</td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td><td></td>'+
+      '<tbody>'+rows+'</tbody><tfoot><tr><td class="c1">Total shown</td><td colspan="5"></td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td><td></td>'+
       '<td class="n" data-total="vc">'+hv('vc',money(t.vc))+'</td><td class="n" data-total="vs">'+hv('vs',money(t.vs))+'</td><td class="n" data-total="pf">'+hv('pf',money(t.pf))+'</td><td></td></tr></tfoot></table></div>';
   }
   function delHtml(it){
@@ -1256,7 +1273,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
   function mapItem(id,x){
     return {id:id,name:String(x.name||id),genus:x.genus||guessGenus(x.name)||'',vendor:x.vendor||'',cost:Number(x.cost)||0,price:Number(x.price)||0,
       qty:Math.max(0,Math.round(Number(x.qty)||0)),reorderAt:x.reorderAt==null?1:Number(x.reorderAt)||0,
-      reorderQty:Number(x.reorderQty)||10,onOrder:Number(x.onOrder)||0,onOrderHow:x.onOrderHow==='inperson'?'inperson':'order',
+      reorderQty:Number(x.reorderQty)||3,onOrder:Number(x.onOrder)||0,onOrderHow:x.onOrderHow==='inperson'?'inperson':'order',
       snoozedQty:x.snoozedQty==null?null:Number(x.snoozedQty),example:!!x.example,kind:'item',bundled:false,
       category:String(x.category||'').trim()||(x.kind==='pot'?'Pots':(x.kind==='cactus'?'Plants':''))||guessCategory(x.name,x.genus),
       soldQty:Number(x.soldQty)||0,soldRev:Number(x.soldRev)||0,soldCost:Number(x.soldCost)||0};
@@ -1861,7 +1878,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
           if(st.cost!=null)doc2.cost=st.cost;if(st.price!=null)doc2.price=st.price;if(st.genus&&st.genus!==st.item.genus)doc2.genus=st.genus;if(st.vendor&&!st.item.vendor)doc2.vendor=st.vendor;
           okAll=await guard(function(){return ref(st.item.id).update(doc2)});
         }else{
-          doc2={name:st.pend.name,category:st.pend.category,genus:st.pend.genus,vendor:st.pend.vendor||'',cost:st.pend.cost,price:st.pend.price,qty:st.pend.qty,reorderAt:1,reorderQty:10,onOrder:0,snoozedQty:null};
+          doc2={name:st.pend.name,category:st.pend.category,genus:st.pend.genus,vendor:st.pend.vendor||'',cost:st.pend.cost,price:st.pend.price,qty:st.pend.qty,reorderAt:1,reorderQty:3,onOrder:0,snoozedQty:null};
           okAll=await guard(function(){return ref(freshId(st.pend.name)).set(doc2)});
         }
       }
@@ -1875,7 +1892,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       if(await guard(function(){return ref(p.item.id).update(sp)}))say('Saved. '+p.item.name+' '+LABEL[p.field]+' is now '+showVal(p.field,p.value)+'.');
     }else{
       var id=freshId(p.name);
-      var doc={name:p.name,category:p.category,genus:p.genus,vendor:p.vendor||'',cost:p.cost,price:p.price,qty:p.qty,reorderAt:1,reorderQty:10,onOrder:0,snoozedQty:null};
+      var doc={name:p.name,category:p.category,genus:p.genus,vendor:p.vendor||'',cost:p.cost,price:p.price,qty:p.qty,reorderAt:1,reorderQty:3,onOrder:0,snoozedQty:null};
       if(await guard(function(){return ref(id).set(doc)}))say('Saved. '+p.name+' added with '+p.qty+' in stock'+(p.cost?', '+money(p.cost)+' each'+(p.costTotal!=null?' ('+money(p.costTotal)+' for all '+p.qty+')':''):'')+'.'+((p.price)?'':' No sell price yet, so profit will show negative. Say “set '+p.name.toLowerCase()+' price to 8”.'));
     }
     pending=null;$('confirm').innerHTML='';$('say').value='';
@@ -2034,7 +2051,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
     var N=function(v){return Math.max(0,Number(v)||0)};
     var ra=$('a-ra').value===''?1:Math.round(N($('a-ra').value));
     var gA=genusText($('a-genus').value||sp.sci)||guessGenus(nm);
-    var doc={name:nm,category:String($('a-cat').value||'').trim()||guessCategory(nm,gA),genus:gA,vendor:vA,cost:N($('a-cost').value),price:N($('a-price').value),qty:Math.round(N($('a-qty').value)),reorderAt:ra,reorderQty:10,onOrder:0,snoozedQty:null};
+    var doc={name:nm,category:String($('a-cat').value||'').trim()||guessCategory(nm,gA),genus:gA,vendor:vA,cost:N($('a-cost').value),price:N($('a-price').value),qty:Math.round(N($('a-qty').value)),reorderAt:ra,reorderQty:3,onOrder:0,snoozedQty:null};
     if(await guard(function(){return ref(freshId(nm)).set(doc)})){
       say('Saved. '+nm+' added with '+doc.qty+' in stock.');
       $('addform').reset();$('a-ra').value='1';$('a-name').focus();
@@ -2116,7 +2133,7 @@ label.f{font-size:12.5px;font-weight:500;letter-spacing:.01em}
       var ex=[['Golden Barrel','Echinocactus',6,15,5],['Old Man Cactus','Cephalocereus',4.5,12,15],['Bunny Ears','Opuntia',3,9,25]];
       for(var i=0;i<ex.length;i++){
         var x=ex[i];
-        if(!await guard(function(){return ref(slug(x[0])).set({name:x[0],genus:x[1],cost:x[2],price:x[3],qty:x[4],reorderAt:1,reorderQty:10,onOrder:0,snoozedQty:null,category:'Plants',example:true})}))break;
+        if(!await guard(function(){return ref(slug(x[0])).set({name:x[0],genus:x[1],cost:x[2],price:x[3],qty:x[4],reorderAt:1,reorderQty:3,onOrder:0,snoozedQty:null,category:'Plants',example:true})}))break;
       }
       say('Example plants added. Try saying “sold 3 golden barrel”.');return;
     }
