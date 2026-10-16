@@ -297,6 +297,15 @@ body.sheetview .prompts{position:static;max-height:none}
 @media (max-width:640px){.top{grid-template-columns:1fr auto}.tmid{grid-column:1/-1;grid-row:1}.tleft{grid-row:2}.tright{grid-row:2}}
 /* fixing a sale */
 .soldcard input.sfix{width:84px;text-align:center;padding:6px 6px}
+/* cheat sheet */
+.cheat{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 14px;margin-top:6px}
+.cheat .cs{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface2)}
+.cheat h4{margin:0 0 6px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+.cheat h4:not(:first-child){margin-top:10px}
+.cheat ul{margin:6px 0 0;padding-left:18px}.cheat li{margin:2px 0}
+.cheat ul.sc{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px 10px}
+.cheat ul.sc b{display:inline-block;min-width:44px;color:var(--accent)}
+.cheat code{display:inline-block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;background:var(--field,rgba(255,255,255,.06));border:1px solid var(--line2);border-radius:6px;padding:2px 7px;color:var(--ink)}
 /* numbers centered */
 .sheet th.n,.sheet td.n,.sheet input[type=number]{text-align:center}
 .sheet td:has(> input[type=number]),.sheet td:has(> .hidcell){text-align:center}
@@ -428,7 +437,7 @@ body.sheetview .prompts{position:static;max-height:none}
       </div>
     </div>
     <textarea id="say" aria-describedby="sayhelp"></textarea>
-    <p class="fine" id="sayhelp"></p>
+    <div class="fine" id="sayhelp"></div>
     <div class="chips" id="chips"></div>
     <div class="row"><button class="btn primary" id="go" type="button">Save</button><button class="btn" id="clear" type="button">Clear</button><span class="undos"><button class="btn" id="undo" type="button" disabled title="Undo the last change"><span aria-hidden="true">↶</span> Undo</button><button class="btn" id="redo" type="button" disabled title="Redo what you just undid">Redo <span aria-hidden="true">↷</span></button></span></div>
     <div id="confirm"></div>
@@ -861,8 +870,8 @@ body.sheetview .prompts{position:static;max-height:none}
     $('sub').textContent=!loaded?'Loading…':allItems.length?(allItems.length+(allItems.length===1?' product':' products')+' in '+knownCats().length+(knownCats().length===1?' category':' categories')):'Nothing added yet';
     $('summary').innerHTML=
       stat('In stock'+(cat==='all'?'':' · '+cat),q.toLocaleString(),false)+
-      stat('Value at cost',money(vc),false)+
-      stat('Value at sale',money(vs),false)+
+      stat('Paid for',money(vc),false)+
+      stat('Sale price',money(vs),false)+
       stat('Running low',String(low),low>0);
     $('sold').innerHTML=soldCard(list.slice());
     $('allt').innerHTML=allItems.length?allCard():'';
@@ -987,7 +996,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var t=totals(vis);
     return '<div class="sheetwrap"><table class="sheet" data-key="'+h(key)+'"><thead><tr>'+
       '<th class="c1">Name</th><th>Category</th>'+th('genus','Genus / type','')+''+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+th('reorderAt','Remind at','n')+
-      th('vc','Value at cost','n')+th('vs','Value at sale','n')+th('pf','Profit if sold','n')+'<th>Sold / add</th></tr></thead>'+
+      th('vc','Paid for','n')+th('vs','Sale price','n')+th('pf','Profit','n')+'<th>Sold / add</th></tr></thead>'+
       '<tbody>'+rows+'</tbody><tfoot><tr><td class="c1">Total shown</td><td colspan="5"></td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td><td></td>'+
       '<td class="n" data-total="vc">'+hv('vc',money(t.vc))+'</td><td class="n" data-total="vs">'+hv('vs',money(t.vs))+'</td><td class="n" data-total="pf">'+hv('pf',money(t.pf))+'</td><td></td></tr></tfoot></table></div>';
   }
@@ -1061,7 +1070,7 @@ body.sheetview .prompts{position:static;max-height:none}
       '<div class="meta">'+(it.genus?'<span class="genus'+(hideF.genus?' off':'')+'" data-hide="genus" title="Tap to hide or show">'+(hideF.genus?'•••':h(it.genus))+'</span>':'')+'<span class="ctag">'+h(it.category)+'</span></div></div>'+
       '<div class="qty'+(hideF.qty?' off':'')+'" data-hide="qty" title="Tap to hide or show">'+(hideF.qty?'•••':it.qty)+'<small>in stock</small>'+tot+'</div>'+lines+
       '<div class="money">'+chip('cost','Cost',money(it.cost))+(it.vendor?chip('vendor','From',h(it.vendor)):'')+
-        (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit if sold',money(it.qty*(it.price-it.cost))))+
+        (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit',money(it.qty*(it.price-it.cost))))+
         chip('reorderAt','Remind at',String(Math.max(0,it.reorderAt)))+'</div>'+
       '<div class="acts">'+acts+'</div>'+ed+'</article>';
   }
@@ -1392,7 +1401,7 @@ body.sheetview .prompts{position:static;max-height:none}
     showSync();say(errMsg,true);
   }
   /* ---- spreadsheet file <-> list of items ---- */
-  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Value at cost'],['_vs','Value at sale'],['_pf','Profit if sold'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
+  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Total paid for'],['_vs','Total sale price'],['_pf','Profit'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
   var NVIS=14;function CL(k){for(var i=0;i<COLS.length;i++)if(COLS[i][0]===k)return colL(i);return 'A'}
   function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
   function colN(ref){var m=String(ref).match(/^([A-Z]+)/);if(!m)return -1;var n=0;for(var i=0;i<m[1].length;i++)n=n*26+(m[1].charCodeAt(i)-64);return n-1}
@@ -1438,7 +1447,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   function sumXml(list){
     var rows='<row r="1" ht="26" customHeight="1">'+cStr(1,0,'SP Inventory summary',4)+'</row><row r="3">';
-    ['Category','Lines','In stock','Value at cost','Value at sale','Profit if sold','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
+    ['Category','Lines','In stock','Paid for','Sale price','Profit','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
     rows+='</row>';
     var by={},order=[];
     list.forEach(function(it){var k=String(it.category||'Other');if(!by[k]){by[k]={n:0,q:0,vc:0,vs:0,sq:0,pm:0};order.push(k)}var a=by[k];a.n++;a.q+=it.qty;a.vc+=it.qty*it.cost;a.vs+=it.qty*it.price;a.sq+=it.soldQty;a.pm+=it.soldRev-it.soldCost});
@@ -1980,7 +1989,7 @@ body.sheetview .prompts{position:static;max-height:none}
     if(p.kind==='delmany'){
       for(var di=0;di<p.ids.length;di++){var did=p.ids[di];await guard(function(){return ref(did).delete()})}
       pending=null;$('confirm').innerHTML='';$('say').value='';edit=null;delAsk=null;
-      say('Deleted '+p.label+'.');render();return;
+      say('Deleted '+p.label+'. Press Undo to bring it back.');render();return;
     }
     if(p.kind==='reorder'){
       var rn0=p.n,inp0=p.how==='inperson';
@@ -2098,7 +2107,7 @@ body.sheetview .prompts{position:static;max-height:none}
       $('confirm').innerHTML='<div class="confirm"><strong>Delete which?</strong><div class="row"><button class="btn bloom" data-act="yes">Just '+h(label)+' ('+q+' in stock)</button><button class="btn bloom" data-act="delcat">Everything in '+h(inCatAll[0].category)+' ('+inCatAll.length+' products, '+cq+' in stock)</button><button class="btn" data-act="no">Keep it</button></div><p class="fine">You can undo this.</p></div>';
       return;
     }
-    $('confirm').innerHTML='<div class="confirm"><strong>Delete '+h(label)+'? '+q+' in stock.</strong><div class="row"><button class="btn bloom" data-act="yes">Yes, delete</button><button class="btn" data-act="no">Keep it</button></div><p class="fine">You can undo this.</p></div>';
+    if(db&&canWrite)apply(pending);
   }
   /* A pasted list, one product per line, like
        Dioscorea elephantipes x 4   $5.00   will sell for $10
@@ -2125,7 +2134,7 @@ body.sheetview .prompts{position:static;max-height:none}
     return out;
   }
   function listLines(t){
-    var ls=String(t).split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean);if(!ls.length)return null;
+    var ls=String(t).split(/\r?\n|;/).map(function(x){return x.trim()}).filter(Boolean);if(!ls.length)return null;
     var all=[];for(var i=0;i<ls.length;i++){var c=listLine(ls[i]);if(!c)return null;all=all.concat(c)}
     return all;
   }
@@ -2139,11 +2148,11 @@ body.sheetview .prompts{position:static;max-height:none}
     var scm=t.match(/^(?:add\s+(?:a\s+)?)?(?:(?:shortcut|abbreviation|abbrev|abbr)\s+)?["'“]?([a-z][a-z0-9]{0,7})\.?["'”]?\s+(?:means|=|stands for|is short for|is)\s+["'“]?([a-z][a-z' -]{1,40}?)["'”]?\.?$/i);
     if(scm&&(/^(?:add\s|shortcut|abbrev)/i.test(t)||/\s(?:means|=|stands for|is short for)\s/i.test(t))&&db&&canWrite){
       var sk=scm[1].toLowerCase(),sv=scm[2].trim().replace(/\b[a-z]/g,function(c){return c.toUpperCase()});
-      if(await setShortcut(sk,sv)){$('say').value='';say('Shortcut saved: '+sk.toUpperCase()+' means '+sv+'. Use it when you type or talk, for example “bought 2 '+sk+' ...”.')}
+      if(await setShortcut(sk,sv)){$('say').value='';syncMode();say('Shortcut saved: '+sk.toUpperCase()+' means '+sv+'. Use it when you type or talk, for example “bought 2 '+sk+' ...”.')}
       return;
     }
     var scd=t.match(/^(?:delete|remove|forget)\s+(?:the\s+)?(?:shortcut|abbreviation)\s+["'“]?([a-z][a-z0-9]{0,7})["'”]?\.?$/i);
-    if(scd&&db&&canWrite){var dk=scd[1].toLowerCase();if(!USERSHORT[dk]){say('There is no shortcut '+dk.toUpperCase()+' of yours to remove.',true);return}if(await setShortcut(dk,null)){$('say').value='';say('Shortcut '+dk.toUpperCase()+' removed.')}return}
+    if(scd&&db&&canWrite){var dk=scd[1].toLowerCase();if(!USERSHORT[dk]){say('There is no shortcut '+dk.toUpperCase()+' of yours to remove.',true);return}if(await setShortcut(dk,null)){$('say').value='';syncMode();say('Shortcut '+dk.toUpperCase()+' removed.')}return}
     if(/^(?:show|list|what are)?\s*(?:my\s+|the\s+)?(?:shortcuts|abbreviations)\??$/i.test(t)){
       var all1=Object.assign({},SHORT_BUILTIN,USERSHORT),ks1=Object.keys(all1).sort();
       say('Shortcuts: '+ks1.map(function(k){return k.toUpperCase()+' = '+all1[k]}).join(', ')+'. Add your own, for example “vrg means variegated”.');return;
@@ -2367,7 +2376,7 @@ body.sheetview .prompts{position:static;max-height:none}
       var ok=await guard(function(){return ref(id).update({name:nm,category:String(d.category||'').trim()||guessCategory(nm,d.genus),genus:String(d.genus).trim(),vendor:String(d.vendor||'').trim(),cost:N(d.cost),price:N(d.price),qty:Math.round(N(d.qty)),reorderAt:Math.round(N(d.reorderAt)),reorderQty:Math.max(1,Math.round(N(d.reorderQty))),snoozedQty:null,example:false})});
       if(ok){edit=null;say('Saved.');render()}
     }
-    else if(act==='delask'){delAsk=id;if(!(edit&&edit.id===id))edit=null;render()}
+    else if(act==='delask'){var gone0=it?fullName(it):'';if(await guard(function(){return ref(id).delete()})){edit=null;delAsk=null;say('Deleted '+gone0+'. Press Undo to bring it back.');render()}}
     else if(act==='del'){var gone=it?it.name:'';if(await guard(function(){return ref(id).delete()})){edit=null;delAsk=null;say('Deleted '+gone+'.');render()}}
   });
 
@@ -2385,6 +2394,19 @@ body.sheetview .prompts{position:static;max-height:none}
       eg:['1 trich 5 20','sold 3 golden barrel','2 vrg h cooperi 12 30','bought 6 aloe at 5 from Black sell for 12','set bunny ears price to 10']
     }
   };
+  /* quick, easy-to-scan cheat sheet for typing */
+  function cheatHtml(){
+    function ex(t){return '<code>'+h(t)+'</code>'}
+    var base=[['VRG','Variegated'],['H','Haworthia'],['CRE','Crested'],['TRICH','Trichocereus'],['MON','Monstrose'],['SM','Small'],['MED','Medium'],['LG','Large'],['XL','Extra Large']];
+    var mine=Object.keys(USERSHORT).sort().map(function(k){return [k.toUpperCase(),USERSHORT[k]]});
+    var sc=base.concat(mine).map(function(x){return '<li><b>'+h(x[0])+'</b> '+h(x[1])+'</li>'}).join('');
+    return '<div class="cheat">'+
+      '<div class="cs"><h4>Add, the quickest way</h4>'+ex('1 trich 5 20')+'<ul><li>how many → <b>1</b></li><li>name → <b>trich</b> (Trichocereus)</li><li>paid each → <b>$5</b></li><li>sell price each → <b>$20</b></li></ul></div>'+
+      '<div class="cs"><h4>Add many at once</h4><ul><li>one per line: press <b>Shift + Enter</b> for a new line</li><li>or put <b>;</b> between them: '+ex('1 trich 5 20; 2 h cooperi 6 15')+'</li><li>or paste a whole list</li><li>then press <b>Enter</b> to save them all</li></ul></div>'+
+      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<h4>Change</h4>'+ex('set bunny ears price to 10')+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
+      '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: '+ex('pk means pachypodium')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
+      '</div><p class="fine" style="margin-top:6px">Press <b>Enter</b> to save. Typos are fine. Tap an example below to fill it in.</p>';
+  }
   function syncMode(){
     var m=MODES[mode],ta=$('say');
     /* On a computer, talking goes through the computer's own dictation, which types into the box */
@@ -2396,7 +2418,7 @@ body.sheetview .prompts{position:static;max-height:none}
     }
     [].forEach.call(document.querySelectorAll('[data-mode]'),function(b){b.setAttribute('aria-pressed',b.getAttribute('data-mode')===mode?'true':'false')});
     ta.placeholder=m.placeholder;ta.className=mode==='speak'?'speak':'';
-    $('sayhelp').textContent=m.help;
+    if(mode==='type')$('sayhelp').innerHTML=cheatHtml();else $('sayhelp').textContent=m.help;
     $('chips').innerHTML=m.eg.map(function(t,i){return '<button class="chip" type="button" data-eg="'+i+'">'+h(t)+'</button>'}).join('');
   }
   [].forEach.call(document.querySelectorAll('[data-mode]'),function(b){
