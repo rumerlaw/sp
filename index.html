@@ -953,9 +953,9 @@ body.sheetview .prompts{position:static;max-height:none}
     rows.forEach(function(o){T.sq+=o.sq;T.sc+=o.sc;T.sr+=o.sr;T.pr+=o.pr});
     function row(o,b){return '<tr'+(b?' class="tot"':'')+'><td>'+h(o.n)+'</td><td>'+o.sq.toLocaleString()+'</td><td>'+hv('cost',money(o.sc))+'</td><td>'+hv('price',money(o.sr))+'</td><td class="pos">'+hv('profit',money(o.pr))+'</td></tr>'}
     return '<details class="soldcard" id="alld"'+(allOpen?' open':'')+'><summary><span class="st">By category</span> <span class="ss">Profit '+(hideF.profit?'•••':money(T.pr))+'</span></summary>'+
-      '<div class="grid">'+stat('Sold',T.sq.toLocaleString(),false)+stat('Bought at',money(T.sc),false)+stat('Sold at',money(T.sr),false)+stat('Profit',money(T.pr),false)+'</div>'+
-      '<div class="tw"><table><tr><th>Category</th><th>Sold</th><th>Bought at</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',sq:T.sq,sc:T.sc,sr:T.sr,pr:T.pr},true):'')+'</table></div>'+
-      '<p class="fine" style="margin-top:8px">Bought at is what you paid for the ones you sold; Sold at is what they sold for.</p></details>';
+      '<div class="grid">'+stat('Sold',T.sq.toLocaleString(),false)+stat('Paid for',money(T.sc),false)+stat('Sold at',money(T.sr),false)+stat('Profit',money(T.pr),false)+'</div>'+
+      '<div class="tw"><table><tr><th>Category</th><th>Sold</th><th>Paid for</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(o){return row(o)}).join('')+(rows.length>1?row({n:'All',sq:T.sq,sc:T.sc,sr:T.sr,pr:T.pr},true):'')+'</table></div>'+
+      '<p class="fine" style="margin-top:8px">Paid for is what you paid for the ones you sold; Sold at is what they sold for.</p></details>';
   }
   function soldCard(list){
     var rows=list.filter(function(it){return it.soldQty>0});
@@ -964,13 +964,13 @@ body.sheetview .prompts{position:static;max-height:none}
     rows.sort(function(a,b){return (b.soldRev-b.soldCost)-(a.soldRev-a.soldCost)});
     var ed=soldEdit&&canWrite,r2=function(v){return Math.round(v*100)/100};
     return wrapSold('Profit '+(hideF.profit?'•••':money(rev-cost)),'<div class="grid">'+stat('Sold',q.toLocaleString(),false)+stat('Profit',money(rev-cost),false)+'</div>'+
-      '<div class="tw"><table><tr><th>Product</th><th>Sold</th><th>Bought at</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(it){
+      '<div class="tw"><table><tr><th>Product</th><th>Sold</th><th>Paid for</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(it){
         var each=it.soldQty?it.soldRev/it.soldQty:0,paid=it.soldQty?it.soldCost/it.soldQty:0,id=h(it.id);
         if(ed)return '<tr><td>'+h(lineLabel(it))+'</td><td><input class="sfix" data-sf="q" data-id="'+id+'" type="number" min="0" step="1" value="'+it.soldQty+'" aria-label="How many sold"></td>'+
-          '<td><input class="sfix" data-sf="c" data-id="'+id+'" type="number" min="0" step="any" value="'+r2(paid)+'" aria-label="Bought at, each"></td>'+
+          '<td><input class="sfix" data-sf="c" data-id="'+id+'" type="number" min="0" step="any" value="'+r2(paid)+'" aria-label="Paid for, each"></td>'+
           '<td><input class="sfix" data-sf="p" data-id="'+id+'" type="number" min="0" step="any" value="'+r2(each)+'" aria-label="Sold at, each"></td><td class="pos">'+money(it.soldRev-it.soldCost)+'</td></tr>';
         return '<tr><td>'+h(lineLabel(it))+'</td><td>'+it.soldQty+'</td><td>'+hv('cost',money(paid))+'</td><td>'+hv('price',money(each))+'</td><td class="pos">'+hv('profit',money(it.soldRev-it.soldCost))+'</td></tr>'}).join('')+'</table></div>'+
-      (canWrite?'<div class="row" style="margin-top:10px"><button class="btn small" type="button" id="soldfix">'+(ed?'Done fixing':'Fix a sale')+'</button>'+(ed?'<span class="fine">Change how many were sold, or the price each was bought at or sold at. Stock is not changed. Undo works too.</span>':'')+'</div>':''));
+      (canWrite?'<div class="row" style="margin-top:10px"><button class="btn small" type="button" id="soldfix">'+(ed?'Done fixing':'Fix a sale')+'</button>'+(ed?'<span class="fine">Change how many were sold, or the price each was paid for or sold at. Stock is not changed. Undo works too.</span>':'')+'</div>':''));
   }
   function calc(it){var vc=it.qty*it.cost,vs=it.qty*it.price;return {vc:vc,vs:vs,pf:vs-vc}}
   function th(k,label,cls){return '<th class="'+cls+' hth'+(hideF[k]?' off':'')+'" data-hide="'+k+'" title="Tap to hide or show this column">'+label+'</th>'}
