@@ -578,7 +578,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   function fixPlant(o){if(!o)return o;var r=plantName(o.name,o.genus,o.category);o.name=r.name;o.genus=r.genus;return o}
   /* the full name (genus + name) is still what you type and what search and matching use */
-  function fullName(it){var n=String(it&&it.name||''),g=String(it&&it.genus||'').trim();if(!g||/\s/.test(g))return n;return n.toLowerCase().indexOf(g.toLowerCase())===0?n:(g+' '+n)}
+  function fullName(it){var n=String(it&&it.name||''),g=String(it&&it.genus||'').trim();if(!g||/\s/.test(g))return n;if(n.toLowerCase().indexOf(g.toLowerCase())===0)return n;var gg=guessGenus(n);if(gg&&gg.toLowerCase()===g.toLowerCase()&&!genusOfWord(n.split(/\s+/)[0]))return n;return g+' '+n}
   /* ---------- shortcuts: VRG = Variegated, H = Haworthia, SM / MED / LG = Small / Medium / Large, CRE = Crested ...
      You can add your own: "vrg means variegated". They are kept with the spreadsheet so everyone shares them. */
   var SHORT_BUILTIN={vrg:'Variegated',vrgt:'Variegated',varieg:'Variegated',vari:'Variegated',cre:'Crested',crst:'Crested',crest:'Crested',
@@ -715,6 +715,8 @@ body.sheetview .prompts{position:static;max-height:none}
   /* which line of a plant does a sentence mean? "at 24", "for $24", "the 9 dollar ones", "from Joe's" */
   function lineHint(text,vendor){
     var t=String(text||''),num=null;
+    /* "cost 5" / "paid 5" picks the line by what it cost */
+    var cm0=t.match(/\b(?:cost|costs|paid)\s*\$?\s*(\d+(?:\.\d+)?)/i);if(cm0)return {num:parseFloat(cm0[1]),vendor:vendor||null,costFirst:true};
     var m=t.match(/(?:\bat|\bfor|@|\beach)\s*\$?\s*(\d+(?:\.\d+)?)/i)||t.match(/\$\s*(\d+(?:\.\d+)?)/)||t.match(/(\d+(?:\.\d+)?)\s*(?:dollars?|bucks|\$)/i);
     if(m)num=parseFloat(m[1]);
     return {num:num,vendor:vendor||null};
@@ -723,8 +725,9 @@ body.sheetview .prompts{position:static;max-height:none}
     var c=lines.slice();
     if(hint.vendor){var v=vnorm(hint.vendor);var f=c.filter(function(l){var lv=vnorm(l.vendor);return lv&&(lv.indexOf(v)===0||v.indexOf(lv)===0)});if(!f.length)return {none:'vendor'};c=f}
     if(hint.num!=null){
-      var p=c.filter(function(l){return !l.bundled&&Math.abs(l.price-hint.num)<0.005});
-      if(!p.length)p=c.filter(function(l){return Math.abs(l.cost-hint.num)<0.005});
+      var byP=function(){return c.filter(function(l){return !l.bundled&&Math.abs(l.price-hint.num)<0.005})},byC=function(){return c.filter(function(l){return Math.abs(l.cost-hint.num)<0.005})};
+      var p=hint.costFirst?byC():byP();
+      if(!p.length)p=hint.costFirst?byP():byC();
       if(!p.length)return {none:'num'};c=p;
     }
     return {lines:c};
@@ -1095,7 +1098,7 @@ body.sheetview .prompts{position:static;max-height:none}
     m=t.match(new RegExp('^(?:set|change|update|make)\\s+(?:the\\s+)?(.+?)\\s+'+FIELD_RE+'\\s+(?:to|at)\\s+\\$?(\\d+(?:\\.\\d+)?)$','i'));
     if(m)return {action:'set',field:fieldKey(m[2]),name:m[1].trim(),value:parseFloat(m[3])};
     m=t.match(/^(?:i\s+)?(?:just\s+)?(?:sold|sell)\s+(\w+)\s+(?:of\s+)?(.+)$/i);
-    if(m&&!isNaN(qtyOf(m[1])))return {action:'sell',qty:qtyOf(m[1]),name:m[2].trim()};
+    if(m&&!isNaN(qtyOf(m[1])))return {action:'sell',qty:qtyOf(m[1]),name:m[2].replace(/\s+(?:that\s+|which\s+)?(?:cost|costs|paid)\s*\$?\s*\d+(?:\.\d+)?\s*(?:each)?\s*$/i,'').trim()};
     m=t.match(/^(?:add|adding|restock|received|got|new)\s+(\w+)\s+(.+)$/i);
     if(m&&!isNaN(qtyOf(m[1]))){
       var rest=m[2];
@@ -2117,6 +2120,8 @@ body.sheetview .prompts{position:static;max-height:none}
      "x 4" is how many you got; the prices are for EACH one. A " x " between names (a hybrid) is part of the name. */
   var WORDN={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,an:1};
   function listLine(line){
+    var mf=String(line).match(/^\s*[-\u2212\u2013]\s*(\d+)\s+(.*?[a-z].*?)(?:\s+(?:at\s+|@\s*|cost\s+)?\$?(\d+(?:\.\d+)?))?\s*$/i);
+    if(mf)return ['sold '+mf[1]+' '+expandShort(mf[2]).trim()+(mf[3]?' cost '+mf[3]:'')];
     /* short form: "1 trich 5 20" = how many, name, paid (each), sell price (each) */
     var cf=expandShort(String(line)).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(\d+)\s+(.*?[a-z].*?)\s+\$?(\d+(?:\.\d+)?)(?:\s+\$?(\d+(?:\.\d+)?))?\s*$/i);
     if(cf&&!/^\s*\d+\s+(?:sold|bought|got|add|set|x)\b/i.test(line)){
@@ -2415,8 +2420,8 @@ body.sheetview .prompts{position:static;max-height:none}
       '<div class="cs"><h4>Add, the quickest way</h4>'+ex('1 trich 5 20')+'<ul><li>how many → <b>1</b></li><li>name → <b>trich</b> (Trichocereus)</li><li>paid each → <b>$5</b></li><li>sell price each → <b>$20</b></li></ul>'+
         '<h4>Add many at once</h4><ul><li>one per line: press <b>Shift + Enter</b> for a new line</li><li>or put <b>;</b> between them: '+ex('1 trich 5 20; 2 h cooperi 6 15')+'</li><li>or paste a whole list</li><li>then press <b>Enter</b> to save them all</li></ul>'+
         '<h4>Lists work too</h4>'+ex('Dioscorea elephantides x 4  $5.00  will sell for $10')+'<ul><li><b>x 4</b> how many · <b>$5.00</b> paid each · <b>$10</b> sell price each</li></ul>'+ex('Dioscorea elephantides x 4 x 5 x $10')+'<ul><li>name x how many x paid each x sell price each</li></ul></div>'+
-      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<h4>Change</h4>'+ex('set bunny ears price to 10')+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
-      '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: '+ex('pk means pachypodium')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
+      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<ul><li>or quicker: '+ex('-2 golden')+'</li><li>two lines at different costs? add what it cost: '+ex('-2 golden 5')+'</li></ul>'+'<h4>Change</h4>'+ex('set bunny ears price to 10')+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
+      '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: type '+ex('pk means pachypodium')+' in the box and press <b>Enter</b></li><li>remove one: '+ex('delete shortcut pk')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
       '</div><p class="fine" style="margin-top:6px">Press <b>Enter</b> to save. Typos are fine.</p></details>';
   }
   document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='cheatd'){try{localStorage.setItem('sp-cheat',e.target.open?'open':'closed')}catch(x){}}},true);
