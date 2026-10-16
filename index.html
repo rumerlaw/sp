@@ -295,6 +295,8 @@ body.sheetview .prompts{position:static;max-height:none}
 .tmid{text-align:center}.tleft{justify-self:start;min-width:0;max-width:100%}.tright{justify-self:end}
 .tleft .btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 @media (max-width:640px){.top{grid-template-columns:1fr auto}.tmid{grid-column:1/-1;grid-row:1}.tleft{grid-row:2}.tright{grid-row:2}}
+/* fixing a sale */
+.soldcard input.sfix{width:84px;text-align:center;padding:6px 6px}
 /* numbers centered */
 .sheet th.n,.sheet td.n,.sheet input[type=number]{text-align:center}
 .sheet td:has(> input[type=number]),.sheet td:has(> .hidcell){text-align:center}
@@ -542,7 +544,9 @@ body.sheetview .prompts{position:static;max-height:none}
   function plantName(name,genus,cat){
     var n=String(name||'').trim().replace(/\s+/g,' '),g=String(genus||'').trim();
     if(cat&&catKey(cat)!=='plant')return {name:n,genus:g};
-    n=n.replace(/\bmonstros[ae]?\b/ig,'Monstrose');
+    n=expandShort(n).replace(/\bmonstros[ae]?\b/ig,'Monstrose');
+    var desc=[];n=n.replace(DESC_RE,function(d){var t=descTitle(d);if(desc.indexOf(t)<0)desc.push(t);return ' '}).replace(/\s+/g,' ').trim();
+    if(!n){if(/\s/.test(g)){n=g;g=''}else{n=desc.join(' ');desc=[]}}
     /* "Cerus" + "Forbesii monstros": the genus word ended up as the name; put it back together first */
     if(!/\s/.test(n)&&genusOfWord(n)&&/\s/.test(g)&&!genusOfWord(g.split(/\s+/)[0])){n=n+' '+g;g=''}
     /* name "Cyphostemma", genus "juttae": the genus was typed as the name and the species as the genus */
@@ -556,12 +560,34 @@ body.sheetview .prompts{position:static;max-height:none}
     }
     if(g&&!/\s/.test(g)){var gf=genusOfWord(g);if(gf)g=gf}
     var bare=n.toLowerCase().replace(/\d+(?:\.\d+)?\s*(?:inch(?:es)?|in\b|cm\b|"|”)?/g,' ').replace(/[^a-z ]/g,'').trim(),gl=g.toLowerCase();
-    if(g&&!/\s/.test(g)&&(bare===gl||bare===gl+'s'||bare===gl+'es'))g='';
+    if(g&&!/\s/.test(g)&&(bare===gl||bare===gl+'s'||bare===gl+'es')){g='';if(desc.length){n=desc.join(' ')+' '+n;desc=[]}}
+    if(desc.length)n=n+' '+desc.join(' ');
     return {name:n,genus:g};
   }
   function fixPlant(o){if(!o)return o;var r=plantName(o.name,o.genus,o.category);o.name=r.name;o.genus=r.genus;return o}
   /* the full name (genus + name) is still what you type and what search and matching use */
   function fullName(it){var n=String(it&&it.name||''),g=String(it&&it.genus||'').trim();if(!g||/\s/.test(g))return n;return n.toLowerCase().indexOf(g.toLowerCase())===0?n:(g+' '+n)}
+  /* ---------- shortcuts: VRG = Variegated, H = Haworthia, SM / MED / LG = Small / Medium / Large, CRE = Crested ...
+     You can add your own: "vrg means variegated". They are kept with the spreadsheet so everyone shares them. */
+  var SHORT_BUILTIN={vrg:'Variegated',vrgt:'Variegated',varieg:'Variegated',vari:'Variegated',cre:'Crested',crst:'Crested',crest:'Crested',
+    mon:'Monstrose',monst:'Monstrose',sm:'Small',sml:'Small',smll:'Small',med:'Medium',md:'Medium',mdm:'Medium',lg:'Large',lrg:'Large',lge:'Large',
+    xl:'Extra Large',xs:'Extra Small',h:'Haworthia',trich:'Trichocereus',tricho:'Trichocereus'};
+  var USERSHORT={};
+  try{USERSHORT=JSON.parse(localStorage.getItem('sp-shortcuts')||'{}')||{}}catch(e){USERSHORT={}}
+  var setShortcut=function(k,v){if(v)USERSHORT[k]=v;else delete USERSHORT[k];try{localStorage.setItem('sp-shortcuts',JSON.stringify(USERSHORT))}catch(e){}return Promise.resolve(true)};
+  function shortFor(w){var k=String(w).toLowerCase().replace(/\.$/,'');return Object.prototype.hasOwnProperty.call(USERSHORT,k)?USERSHORT[k]:(Object.prototype.hasOwnProperty.call(SHORT_BUILTIN,k)?SHORT_BUILTIN[k]:null)}
+  function expandShort(t){
+    return String(t||'').replace(/(^|[\s,;(])([A-Za-z][A-Za-z0-9]{0,7})\.?(?=$|[\s,;)])/g,function(m,pre,w,off,all){
+      var v=shortFor(w);if(!v)return m;
+      /* a lone "h" only counts before another word (h cooperi), and "x" never (hybrids) */
+      if(w.length===1){var after=all.slice(off+m.length);if(!/^\s+[A-Za-z]{3,}/.test(after))return m}
+      return pre+v;
+    });
+  }
+  /* words that describe the plant rather than name it; they go after the name: "Cooperi Variegated", "Small Opuntia" */
+  var DESC_RE=/\b(extra[\s-]large|extra[\s-]small|small|medium|large|tiny|mini|jumbo|baby|variegated|crested|monstrose|dwarf)\b/ig;
+  function descTitle(d){return d.toLowerCase().replace(/[\s-]+/g,' ').replace(/\b[a-z]/g,function(c){return c.toUpperCase()})}
+  function wordsKey(s){return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(function(w){return w&&!/^(cactus|cacti|plants?|the)$/.test(w)}).map(function(w){return w.replace(/(es|s)$/,'')}).sort().join(' ')}
   /* ---------- categories ---------- */
   function catKey(c){return String(c||'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/(es|s)$/,'')}
   function knownCats(){var seen={},out=[];allItems.forEach(function(i){var c=String(i.category||'').trim();if(c&&!seen[catKey(c)]){seen[catKey(c)]=1;out.push(c)}});return out}
@@ -735,6 +761,10 @@ body.sheetview .prompts{position:static;max-height:none}
     var pool=allItems.filter(function(it){return nums(it.name)===nn});
     var hit=null;
     pool.forEach(function(it){var m=norm(fullName(it));if(!hit&&m===n)hit=it});
+    var wk=wordsKey(bare);if(!hit&&wk)pool.forEach(function(it){if(!hit&&(wordsKey(fullName(it))===wk||wordsKey(it.name)===wk))hit=it});
+    /* "small opuntia" must not land on "medium opuntia": sizes and looks have to agree */
+    var dW=(String(bare).match(DESC_RE)||[]).map(descTitle).sort().join(','),dOK=function(it){return (String(fullName(it)).match(DESC_RE)||[]).map(descTitle).sort().join(',')===dW};
+    if(!hit)pool=pool.filter(dOK);
     pool.forEach(function(it){var m=norm(it.name);if(!hit&&m===n)hit=it});
     if(hit)return hit;
     pool.forEach(function(it){var m=norm(fullName(it));if(!hit&&m.length>=3&&(m.indexOf(n)>=0||n.indexOf(m)>=0))hit=it});
@@ -891,6 +921,20 @@ body.sheetview .prompts{position:static;max-height:none}
   /* spreadsheet view: cells you can type in, with the sums worked out for you */
   function soldFields(it,n){return {soldQty:(it.soldQty||0)+n,soldRev:(it.soldRev||0)+n*it.price,soldCost:(it.soldCost||0)+n*it.cost}}
   var soldOpen=false;
+  var soldEdit=false;
+  document.addEventListener('click',function(e){if(e.target&&e.target.id==='soldfix'){soldEdit=!soldEdit;soldOpen=true;render()}});
+  /* fixing a recorded sale: how many, bought at (each), sold at (each). Stock stays as it is. */
+  document.addEventListener('change',async function(e){
+    var inp=e.target,f=inp&&inp.getAttribute&&inp.getAttribute('data-sf');if(!f||!db||!canWrite)return;
+    var id=inp.getAttribute('data-id'),it=allItems.filter(function(i){return i.id===id})[0];if(!it)return;
+    var v=Number(inp.value);if(inp.value===''||!(v>=0)){say('Enter a number that is 0 or more.',true);render();return}
+    var q=it.soldQty,c=q?it.soldCost/q:0,pr=q?it.soldRev/q:0;
+    if(f==='q'){q=Math.round(v)}else if(f==='c'){c=v}else{pr=v}
+    var want={soldQty:q,soldCost:Math.round(q*c*100)/100,soldRev:Math.round(q*pr*100)/100},patch={};
+    /* desktop file: the values are set directly; shared online list: keep what other devices recorded and adjust ours */
+    Object.keys(want).forEach(function(k){patch[k]=(typeof rawList!=='undefined')?want[k]:((Number((raw[id]||{})[k])||0)+(want[k]-it[k]))});
+    if(await guard(function(){return ref(id).update(patch)}))say('Saved. '+fullName(it)+': '+q+' sold, bought at '+money(c)+', sold at '+money(pr)+' each, profit '+money(q*(pr-c))+'.');
+  });
   function wrapSold(sum,body){return '<details class="soldcard" id="soldd"'+(soldOpen?' open':'')+'><summary><span class="st">Profit from sales'+(cat==='all'?'':' · '+h(cat))+'</span> <span class="ss">'+h(sum)+'</span></summary>'+body+'</details>'}
   document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='soldd')soldOpen=e.target.open},true);
   var allOpen=false;
@@ -917,10 +961,15 @@ body.sheetview .prompts{position:static;max-height:none}
     if(!rows.length)return wrapSold('Nothing sold yet','<p class="fine">Sales you record show up here with what you paid, what you sold for and the profit.</p>');
     var q=0,rev=0,cost=0;rows.forEach(function(it){q+=it.soldQty;rev+=it.soldRev;cost+=it.soldCost});
     rows.sort(function(a,b){return (b.soldRev-b.soldCost)-(a.soldRev-a.soldCost)});
+    var ed=soldEdit&&canWrite,r2=function(v){return Math.round(v*100)/100};
     return wrapSold('Profit '+(hideF.profit?'•••':money(rev-cost)),'<div class="grid">'+stat('Sold',q.toLocaleString(),false)+stat('Profit',money(rev-cost),false)+'</div>'+
       '<div class="tw"><table><tr><th>Product</th><th>Sold</th><th>Bought at</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(it){
-        var each=it.soldQty?it.soldRev/it.soldQty:0,paid=it.soldQty?it.soldCost/it.soldQty:0;
-        return '<tr><td>'+h(lineLabel(it))+'</td><td>'+it.soldQty+'</td><td>'+hv('cost',money(paid))+'</td><td>'+hv('price',money(each))+'</td><td class="pos">'+hv('profit',money(it.soldRev-it.soldCost))+'</td></tr>'}).join('')+'</table></div>');
+        var each=it.soldQty?it.soldRev/it.soldQty:0,paid=it.soldQty?it.soldCost/it.soldQty:0,id=h(it.id);
+        if(ed)return '<tr><td>'+h(lineLabel(it))+'</td><td><input class="sfix" data-sf="q" data-id="'+id+'" type="number" min="0" step="1" value="'+it.soldQty+'" aria-label="How many sold"></td>'+
+          '<td><input class="sfix" data-sf="c" data-id="'+id+'" type="number" min="0" step="any" value="'+r2(paid)+'" aria-label="Bought at, each"></td>'+
+          '<td><input class="sfix" data-sf="p" data-id="'+id+'" type="number" min="0" step="any" value="'+r2(each)+'" aria-label="Sold at, each"></td><td class="pos">'+money(it.soldRev-it.soldCost)+'</td></tr>';
+        return '<tr><td>'+h(lineLabel(it))+'</td><td>'+it.soldQty+'</td><td>'+hv('cost',money(paid))+'</td><td>'+hv('price',money(each))+'</td><td class="pos">'+hv('profit',money(it.soldRev-it.soldCost))+'</td></tr>'}).join('')+'</table></div>'+
+      (canWrite?'<div class="row" style="margin-top:10px"><button class="btn small" type="button" id="soldfix">'+(ed?'Done fixing':'Fix a sale')+'</button>'+(ed?'<span class="fine">Change how many were sold, or the price each was bought at or sold at. Stock is not changed. Undo works too.</span>':'')+'</div>':''));
   }
   function calc(it){var vc=it.qty*it.cost,vs=it.qty*it.price;return {vc:vc,vs:vs,pf:vs-vc}}
   function th(k,label,cls){return '<th class="'+cls+' hth'+(hideF[k]?' off':'')+'" data-hide="'+k+'" title="Tap to hide or show this column">'+label+'</th>'}
@@ -1088,9 +1137,11 @@ body.sheetview .prompts{position:static;max-height:none}
     var rest=before.replace(qm[0],' ');
     var cm=rest.match(new RegExp('(for|paid|at|cost(?:ing|s)?)\\s+\\$?(\\d+(?:\\.\\d+)?)(?:\\s*'+MONEY+')?(\\s+(?:each|apiece|a piece|per plant|per item|per one|ea))?','i'));
     var cost=null,total=null;
-    if(cm){var v=parseFloat(cm[2]);if(cm[3]||/^cost/i.test(cm[1])){cost=v}else{total=v;cost=v/q}}
+    var forAll=/\b(?:total|in total|for all|altogether|all together|for the lot|for (?:them )?all|for everything)\b/i.test(rest);
+    var plantish=(function(){if(name){var ex=find(name);var c0=ex?ex.category:guessCategory(name,null);return catKey(c0)==='plant'}return /\b(?:plants?|cact\w*|succulents?)\b/i.test(t)})();
+    if(cm){var v=parseFloat(cm[2]);if(cm[3]||/^cost/i.test(cm[1])||(plantish&&!forAll)){cost=v}else{total=v;cost=v/q}}
     else if(rest.match(/\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*(?:each|apiece|a piece|ea)\b/i)){cost=parseFloat(rest.match(/\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*(?:each|apiece|a piece|ea)\b/i)[1])}
-    else{var bn=rest.match(/(?:^|[^\d.$])\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*$/i);if(bn){total=parseFloat(bn[1]);cost=total/q}}
+    else{var bn=rest.match(/(?:^|[^\d.$])\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\s*$/i);if(bn){if(plantish&&!forAll)cost=parseFloat(bn[1]);else{total=parseFloat(bn[1]);cost=total/q}}}
     var pm=after.match(/\$?(\d+(?:\.\d+)?)/);
     var gm=t.match(/\bgenus\s+([A-Za-z]+)/i);
     var price=pm?parseFloat(pm[1]):null;
@@ -1166,7 +1217,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   var BUNDLE=/[,;.]?\s*(?:and\s+)?(?:(?:it|they)\s*(?:'?re|'?s|are|is)?\s+)?(?:sold|sell|selling|included|go|goes|come|comes|given|give)\s+(?:together\s+)?(?:with|in|along with)\s+(?:the\s+|my\s+|each\s+|every\s+)?(?:plants?|cacti|cactus(?:es)?)\b/i;
   async function interpret(text,spoken){
-    text=normNums(text).replace(/[,.;]?\s*\bfor\s+(?:the\s+|my\s+)?pots?\s*[.!]?\s*$/i,'');
+    text=expandShort(normNums(text)).replace(/[,.;]?\s*\bfor\s+(?:the\s+|my\s+)?pots?\s*[.!]?\s*$/i,'');
     var r=await interpret0(text,spoken);
     return r;
   }
@@ -1310,6 +1361,7 @@ body.sheetview .prompts{position:static;max-height:none}
   var F=null,QTY_KEYS=['qty','soldQty','soldRev','soldCost'],queue=Promise.resolve(),busy=0,lastMtime=0,lastSaved=null,errMsg='';
   /* the desktop app asks this before closing, and waits until every change is saved */
   window.__spBusy=function(){return busy>0};
+  setShortcut=function(k,v){if(!F)return Promise.resolve(false);return commit(function(){if(v)USERSHORT[k]=v;else delete USERSHORT[k]}).then(function(){return !errMsg})};
   function showSync(){
     var el=$('sync');
     if(errMsg){el.hidden=false;el.className='syncbar';el.textContent=errMsg;return}
@@ -1378,6 +1430,11 @@ body.sheetview .prompts{position:static;max-height:none}
     var cols='<cols>'+widths.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"'+(i>=NVIS?' hidden="1"':'')+'/>'}).join('')+'</cols>';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+rows+'</sheetData><autoFilter ref="A1:'+colL(NVIS-1)+last+'"/></worksheet>';
   }
+  function shortXml(){
+    var rows='<row r="1">'+cStr(1,0,'Shortcut',1)+cStr(1,1,'Means',1)+'</row>',r=2;
+    Object.keys(USERSHORT).sort().forEach(function(k){rows+='<row r="'+r+'">'+cStr(r,0,k.toUpperCase(),0)+cStr(r,1,USERSHORT[k],0)+'</row>';r++});
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="30" customWidth="1"/></cols><sheetData>'+rows+'</sheetData></worksheet>';
+  }
   function sumXml(list){
     var rows='<row r="1" ht="26" customHeight="1">'+cStr(1,0,'SP Inventory summary',4)+'</row><row r="3">';
     ['Category','Lines','In stock','Value at cost','Value at sale','Profit if sold','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
@@ -1398,13 +1455,13 @@ body.sheetview .prompts{position:static;max-height:none}
   var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6B3A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top style="medium"/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="1" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/></cellXfs></styleSheet>';
   async function buildXlsx(by){
     var z=new JSZip();
-    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>');
+    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>');
     z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
-    z.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Stock" sheetId="1" r:id="rId1"/><sheet name="Summary" sheetId="2" r:id="rId2"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
-    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
+    z.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Stock" sheetId="1" r:id="rId1"/><sheet name="Summary" sheetId="2" r:id="rId2"/><sheet name="Shortcuts" sheetId="3" r:id="rId3"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
+    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
     z.file('xl/styles.xml',STYLES);
     SST={list:[],idx:Object.create(null),count:0};
-    try{z.file('xl/worksheets/sheet1.xml',sheetXml(by));z.file('xl/worksheets/sheet2.xml',sumXml(by));z.file('xl/sharedStrings.xml',sstXml())}finally{SST=null}
+    try{z.file('xl/worksheets/sheet1.xml',sheetXml(by));z.file('xl/worksheets/sheet2.xml',sumXml(by));z.file('xl/worksheets/sheet3.xml',shortXml());z.file('xl/sharedStrings.xml',sstXml())}finally{SST=null}
     return z.generateAsync({type:'uint8array',compression:'DEFLATE'});
   }
   function parseXml(t){return new DOMParser().parseFromString(t,'application/xml')}
@@ -1494,7 +1551,7 @@ body.sheetview .prompts{position:static;max-height:none}
       var sh=sheets[si],lname=String(sh.name||'').toLowerCase();
       if(!relMap[sh.rid])continue;
       var xml=await get(relMap[sh.rid]);if(!xml)continue;
-      var doc=parseXml(xml),rows={},maxR=0;
+      var doc=parseXml(xml),rows={},maxR=0,isShort=lname==='shortcuts';
       [].forEach.call(doc.getElementsByTagName('row'),function(row){
         var rn=Number(row.getAttribute('r'));
         kids(row,'c').forEach(function(c){
@@ -1505,6 +1562,7 @@ body.sheetview .prompts{position:static;max-height:none}
           (rows[rn]=rows[rn]||{})[ci]=val;if(rn>maxR)maxR=rn;
         });
       });
+      if(isShort){by.shortcuts={};for(var sr=2;sr<=maxR;sr++){var rw=rows[sr]||{},sk=String(rw[0]==null?'':rw[0]).trim().toLowerCase().replace(/\.$/,''),sv=String(rw[1]==null?'':rw[1]).trim();if(/^[a-z][a-z0-9]{0,7}$/.test(sk)&&sv)by.shortcuts[sk]=sv}continue}
       if(lname==='summary'||lname==='settings')continue;
       if(maxR>0)by.hasContent=true;
       var hdr=0,map=null,best=0;
@@ -1765,6 +1823,7 @@ body.sheetview .prompts{position:static;max-height:none}
       bytes=await decryptPackage(bytes,encPw);plainBytes=bytes;
     }
     var by=await readXlsx(bytes);
+    USERSHORT=by.shortcuts||{};
     fileFmt={isApp:by.isApp,hasContent:by.hasContent,n:by.cactus.length+by.pot.length,by:by};
     lastMtime=f.mtime;rawList=flat(by);
     /* names that repeat the genus are tidied here and written back with the next change */
@@ -1964,7 +2023,7 @@ body.sheetview .prompts{position:static;max-height:none}
     }else{
       var id=freshId(p.name);
       var doc={name:p.name,category:p.category,genus:p.genus,vendor:p.vendor||'',cost:p.cost,price:p.price,qty:p.qty,reorderAt:1,reorderQty:1,onOrder:0,snoozedQty:null};
-      if(await guard(function(){return ref(id).set(doc)}))say('Saved. '+p.name+' added with '+p.qty+' in stock'+(p.cost?', '+money(p.cost)+' each'+(p.costTotal!=null?' ('+money(p.costTotal)+' for all '+p.qty+')':''):'')+'.'+((p.price)?'':' No sell price yet, so profit will show negative. Say “set '+p.name.toLowerCase()+' price to 8”.'));
+      if(await guard(function(){return ref(id).set(doc)}))say('Saved. '+fullName(plantName(p.name,p.genus,p.category))+' added with '+p.qty+' in stock'+(p.cost?', '+money(p.cost)+' each'+(p.costTotal!=null?' ('+money(p.costTotal)+' for all '+p.qty+')':''):'')+'.'+((p.price)?'':' No sell price yet, so profit will show negative. Say “set '+p.name.toLowerCase()+' price to 8”.'));
     }
     pending=null;$('confirm').innerHTML='';$('say').value='';
   }
@@ -2045,7 +2104,7 @@ body.sheetview .prompts{position:static;max-height:none}
      "x 4" is how many you got; the prices are for EACH one. A " x " between names (a hybrid) is part of the name. */
   var WORDN={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,an:1};
   function listLine(line){
-    var m=String(line).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*[,;-]?\s*(?:(?:i\s+)?(?:bought|paid|got|cost|costs|purchased)\s*(?:it|them|each)?\s*(?:for|at)?|@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and|but)\s+)?(?:(?:i\s+)?(?:will|to|i'?ll|can|should)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
+    var m=expandShort(String(line)).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*[,;-]?\s*(?:(?:i\s+)?(?:bought|paid|got|cost|costs|purchased)\s*(?:it|them|each)?\s*(?:for|at)?|@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and|but)\s+)?(?:(?:i\s+)?(?:will|to|i'?ll|can|should)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
     if(!m)return null;
     var name=m[1].replace(/[\s,;:-]+$/,'').trim();if(!/[a-z]/i.test(name))return null;
     var g=guessGenus(name),fw=name.split(/\s+/)[0];
@@ -2068,6 +2127,18 @@ body.sheetview .prompts{position:static;max-height:none}
     if($('go').disabled)return;
     var t=$('say').value.trim();
     if(!t){if(!fromPause)say('Say or type something first.',true);return}
+    var scm=t.match(/^(?:add\s+(?:a\s+)?)?(?:(?:shortcut|abbreviation|abbrev|abbr)\s+)?["'“]?([a-z][a-z0-9]{0,7})\.?["'”]?\s+(?:means|=|stands for|is short for|is)\s+["'“]?([a-z][a-z' -]{1,40}?)["'”]?\.?$/i);
+    if(scm&&(/^(?:add\s|shortcut|abbrev)/i.test(t)||/\s(?:means|=|stands for|is short for)\s/i.test(t))&&db&&canWrite){
+      var sk=scm[1].toLowerCase(),sv=scm[2].trim().replace(/\b[a-z]/g,function(c){return c.toUpperCase()});
+      if(await setShortcut(sk,sv)){$('say').value='';say('Shortcut saved: '+sk.toUpperCase()+' means '+sv+'. Use it when you type or talk, for example “bought 2 '+sk+' ...”.')}
+      return;
+    }
+    var scd=t.match(/^(?:delete|remove|forget)\s+(?:the\s+)?(?:shortcut|abbreviation)\s+["'“]?([a-z][a-z0-9]{0,7})["'”]?\.?$/i);
+    if(scd&&db&&canWrite){var dk=scd[1].toLowerCase();if(!USERSHORT[dk]){say('There is no shortcut '+dk.toUpperCase()+' of yours to remove.',true);return}if(await setShortcut(dk,null)){$('say').value='';say('Shortcut '+dk.toUpperCase()+' removed.')}return}
+    if(/^(?:show|list|what are)?\s*(?:my\s+|the\s+)?(?:shortcuts|abbreviations)\??$/i.test(t)){
+      var all1=Object.assign({},SHORT_BUILTIN,USERSHORT),ks1=Object.keys(all1).sort();
+      say('Shortcuts: '+ks1.map(function(k){return k.toUpperCase()+' = '+all1[k]}).join(', ')+'. Add your own, for example “vrg means variegated”.');return;
+    }
     var LL=listLines(t);
     if(LL&&db&&canWrite){
       $('go').disabled=true;$('go').textContent='Working…';say('');$('confirm').innerHTML='';pending=null;
