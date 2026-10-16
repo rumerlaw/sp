@@ -2122,6 +2122,13 @@ body.sheetview .prompts{position:static;max-height:none}
       if(cg&&cw.toLowerCase()!==cg.toLowerCase()&&cw.slice(0,3).toLowerCase()===cg.slice(0,3).toLowerCase()&&cw.length>=5)cn=cg+cn.slice(cw.length);
       return ['bought '+cf[1]+' '+cn+' at '+cf[3]+' each'+(cf[4]?' sell for '+cf[4]+' each':'')];
     }
+    /* "Dioscorea elephantides x 4 x 5 x $10" = name, how many, paid each, sell price each */
+    var xf=expandShort(String(line)).match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\s+[x\u00D7]\s*\$?\s*(\d+(?:\.\d+)?)(?:\s+[x\u00D7]\s*\$?\s*(\d+(?:\.\d+)?))?\s*\.?\s*$/i);
+    if(xf&&/[a-z]/i.test(xf[1])){
+      var xn=xf[1].replace(/[\s,;:-]+$/,'').trim(),xg=guessGenus(xn),xw=xn.split(/\s+/)[0];
+      if(xg&&xw.toLowerCase()!==xg.toLowerCase()&&xw.slice(0,3).toLowerCase()===xg.slice(0,3).toLowerCase()&&xw.length>=5)xn=xg+xn.slice(xw.length);
+      return ['bought '+xf[2]+' '+xn+' at '+xf[3]+' each'+(xf[4]?' sell for '+xf[4]+' each':'')];
+    }
     var m=expandShort(String(line)).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*[,;-]?\s*(?:(?:i\s+)?(?:bought|paid|got|cost|costs|purchased)\s*(?:it|them|each)?\s*(?:for|at)?|@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and|but)\s+)?(?:(?:i\s+)?(?:will|to|i'?ll|can|should)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
     if(!m)return null;
     var name=m[1].replace(/[\s,;:-]+$/,'').trim();if(!/[a-z]/i.test(name))return null;
@@ -2402,6 +2409,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var sc=base.concat(mine).map(function(x){return '<li><b>'+h(x[0])+'</b> '+h(x[1])+'</li>'}).join('');
     return '<div class="cheat">'+
       '<div class="cs"><h4>Add, the quickest way</h4>'+ex('1 trich 5 20')+'<ul><li>how many → <b>1</b></li><li>name → <b>trich</b> (Trichocereus)</li><li>paid each → <b>$5</b></li><li>sell price each → <b>$20</b></li></ul></div>'+
+      '<div class="cs"><h4>Add from a list</h4>'+ex('Dioscorea elephantides x 4  $5.00  will sell for $10')+'<ul><li><b>x 4</b> → how many</li><li><b>$5.00</b> → paid each</li><li><b>will sell for $10</b> → sell price each</li></ul><p style="margin:8px 0 4px">or shorter:</p>'+ex('Dioscorea elephantides x 4 x 5 x $10')+'<ul><li>name x how many x paid each x sell price each</li></ul></div>'+
       '<div class="cs"><h4>Add many at once</h4><ul><li>one per line: press <b>Shift + Enter</b> for a new line</li><li>or put <b>;</b> between them: '+ex('1 trich 5 20; 2 h cooperi 6 15')+'</li><li>or paste a whole list</li><li>then press <b>Enter</b> to save them all</li></ul></div>'+
       '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<h4>Change</h4>'+ex('set bunny ears price to 10')+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
       '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: '+ex('pk means pachypodium')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
