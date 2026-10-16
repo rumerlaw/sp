@@ -576,6 +576,11 @@ body.sheetview .prompts{position:static;max-height:none}
     if(desc.length)n=n+' '+desc.join(' ');
     return {name:n,genus:g};
   }
+  function canonCat(c){
+    c=String(c||'').trim();if(!c)return c;var k=catKey(c),hit=null;
+    allItems.forEach(function(i){var ic=String(i.category||'').trim();if(ic&&catKey(ic)===k&&(!hit||(/^[a-z]/.test(hit)&&/^[A-Z]/.test(ic))))hit=ic});
+    var out=hit||c;return /^[a-z]/.test(out)?out.charAt(0).toUpperCase()+out.slice(1):out;
+  }
   function fixPlant(o){if(!o)return o;var r=plantName(o.name,o.genus,o.category);o.name=r.name;o.genus=r.genus;return o}
   /* the full name (genus + name) is still what you type and what search and matching use */
   function fullName(it){var n=String(it&&it.name||''),g=String(it&&it.genus||'').trim();if(!g||/\s/.test(g))return n;if(n.toLowerCase().indexOf(g.toLowerCase())===0)return n;var gg=guessGenus(n);if(gg&&gg.toLowerCase()===g.toLowerCase()&&!genusOfWord(n.split(/\s+/)[0]))return n;return g+' '+n}
@@ -1456,12 +1461,12 @@ body.sheetview .prompts{position:static;max-height:none}
     ['Category','Lines','In stock','Value at cost','Value at sale','Profit if sold','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
     rows+='</row>';
     var by={},order=[];
-    list.forEach(function(it){var k=String(it.category||'Other');if(!by[k]){by[k]={n:0,q:0,vc:0,vs:0,sq:0,pm:0};order.push(k)}var a=by[k];a.n++;a.q+=it.qty;a.vc+=it.qty*it.cost;a.vs+=it.qty*it.price;a.sq+=it.soldQty;a.pm+=it.soldRev-it.soldCost});
-    order.sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1});
+    list.forEach(function(it){var k=catKey(it.category||'Other')||'other';if(!by[k]){by[k]={label:String(it.category||'Other'),n:0,q:0,vc:0,vs:0,sq:0,pm:0};order.push(k)}var a=by[k];if(/^[a-z]/.test(a.label)&&/^[A-Z]/.test(String(it.category||'')))a.label=String(it.category);a.n++;a.q+=it.qty;a.vc+=it.qty*it.cost;a.vs+=it.qty*it.price;a.sq+=it.soldQty;a.pm+=it.soldRev-it.soldCost});
+    order.sort(function(a,b){return by[a].label.toLowerCase()<by[b].label.toLowerCase()?-1:1});
     var S="'Stock'!",rng=function(L){return S+L+'2:'+L+'5000'},T={n:0,q:0,vc:0,vs:0,sq:0,pm:0};
     order.forEach(function(k,i){
       var r=4+i,a=by[k],key='$A'+r;
-      var cB=CL('category');rows+='<row r="'+r+'">'+cStr(r,0,k,0)+cFor(r,1,'COUNTIF('+rng(cB)+','+key+')',a.n,3)+cFor(r,2,'SUMIF('+rng(cB)+','+key+','+rng(CL('qty'))+')',a.q,3)+cFor(r,3,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vc'))+')',a.vc,2)+cFor(r,4,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vs'))+')',a.vs,2)+cFor(r,5,'E'+r+'-D'+r,a.vs-a.vc,2)+cFor(r,6,'SUMIF('+rng(cB)+','+key+','+rng(CL('soldQty'))+')',a.sq,3)+cFor(r,7,'SUMIF('+rng(cB)+','+key+','+rng(CL('_pm'))+')',a.pm,2)+'</row>';
+      var cB=CL('category');rows+='<row r="'+r+'">'+cStr(r,0,a.label,0)+cFor(r,1,'COUNTIF('+rng(cB)+','+key+')',a.n,3)+cFor(r,2,'SUMIF('+rng(cB)+','+key+','+rng(CL('qty'))+')',a.q,3)+cFor(r,3,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vc'))+')',a.vc,2)+cFor(r,4,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vs'))+')',a.vs,2)+cFor(r,5,'E'+r+'-D'+r,a.vs-a.vc,2)+cFor(r,6,'SUMIF('+rng(cB)+','+key+','+rng(CL('soldQty'))+')',a.sq,3)+cFor(r,7,'SUMIF('+rng(cB)+','+key+','+rng(CL('_pm'))+')',a.pm,2)+'</row>';
       ['n','q','vc','vs','sq','pm'].forEach(function(f){T[f]+=a[f]});
     });
     var tr=4+order.length,first=4,lastR=Math.max(4,tr-1);
@@ -1843,6 +1848,9 @@ body.sheetview .prompts{position:static;max-height:none}
     fileFmt={isApp:by.isApp,hasContent:by.hasContent,n:by.cactus.length+by.pot.length,by:by};
     lastMtime=f.mtime;rawList=flat(by);
     /* names that repeat the genus are tidied here and written back with the next change */
+    var bestCat={};rawList.forEach(function(x){var c=String(x.category||'').trim();if(!c)return;var k=catKey(c),b=bestCat[k];if(!b||(/^[a-z]/.test(b)&&/^[A-Z]/.test(c)))bestCat[k]=c});
+    Object.keys(bestCat).forEach(function(k){var c=bestCat[k];if(/^[a-z]/.test(c))bestCat[k]=c.charAt(0).toUpperCase()+c.slice(1)});
+    rawList.forEach(function(x){var c=String(x.category||'').trim();if(c&&bestCat[catKey(c)]&&bestCat[catKey(c)]!==c)x.category=bestCat[catKey(c)]});
     rawList.forEach(function(x){var g0=x.genus||guessGenus(x.name),c0=String(x.category||'').trim()||guessCategory(x.name,g0),pn=plantName(x.name,g0,c0);if(pn.name&&(pn.name!==x.name||(pn.genus||'')!==(x.genus||''))){x.name=pn.name;x.genus=pn.genus}});
     return rawList;
   }
@@ -1948,9 +1956,10 @@ body.sheetview .prompts{position:static;max-height:none}
     var r=baseRef(id);
     return {
       update:function(patch){var it=itemById(id);
+        if(patch&&patch.category)patch=Object.assign({},patch,{category:canonCat(patch.category)});
         if(patch&&('name' in patch||'genus' in patch)){var pn=plantName('name' in patch?patch.name:(it?it.name:''),'genus' in patch?patch.genus:(it?it.genus:''),'category' in patch?patch.category:(it?it.category:''));patch=Object.assign({},patch,{name:pn.name,genus:pn.genus})}
         if(it){var before={};Object.keys(patch).forEach(function(k){before[k]=it[k]===undefined?null:it[k]});undoRec(function(){return baseRef(id).update(before)},id)}return r.update(patch)},
-      set:function(data){if(data&&data.name){var g0=data.genus||guessGenus(data.name),c0=data.category||guessCategory(data.name,g0),pn=plantName(data.name,g0,c0);data=Object.assign({},data,{name:pn.name,genus:pn.genus})}var it=itemById(id),snap=it?snapshot(it):null;undoRec(snap?function(){return baseRef(id).set(snap)}:function(){return baseRef(id).delete()},id);return r.set(data)},
+      set:function(data){if(data&&data.category)data=Object.assign({},data,{category:canonCat(data.category)});if(data&&data.name){var g0=data.genus||guessGenus(data.name),c0=data.category||guessCategory(data.name,g0),pn=plantName(data.name,g0,c0);data=Object.assign({},data,{name:pn.name,genus:pn.genus})}var it=itemById(id),snap=it?snapshot(it):null;undoRec(snap?function(){return baseRef(id).set(snap)}:function(){return baseRef(id).delete()},id);return r.set(data)},
       delete:function(){var it=itemById(id),snap=it?snapshot(it):null;if(snap)undoRec(function(){return baseRef(id).set(snap)},id);return r.delete()}
     };
   };
