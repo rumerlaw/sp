@@ -305,7 +305,7 @@ body.sheetview .prompts{position:static;max-height:none}
 .cheat ul{margin:6px 0 0;padding-left:18px}.cheat li{margin:2px 0}
 .cheat ul.sc{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px 10px}
 .cheat ul.sc b{display:inline-block;min-width:44px;color:var(--accent)}
-.cheat code{display:inline-block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;background:var(--field,rgba(255,255,255,.06));border:1px solid var(--line2);border-radius:6px;padding:2px 7px;color:var(--ink)}
+.cheat code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;font-weight:700;background:none;border:0;padding:0;color:var(--accent)}
 @media (max-width:820px){.cheat{grid-template-columns:1fr}}
 .cheatwrap>summary{cursor:pointer;font-weight:600;color:var(--ink);padding:4px 0;user-select:none}
 .cheatwrap>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
@@ -2417,7 +2417,7 @@ body.sheetview .prompts{position:static;max-height:none}
         '<h4>Lists work too</h4>'+ex('Dioscorea elephantides x 4  $5.00  will sell for $10')+'<ul><li><b>x 4</b> how many · <b>$5.00</b> paid each · <b>$10</b> sell price each</li></ul>'+ex('Dioscorea elephantides x 4 x 5 x $10')+'<ul><li>name x how many x paid each x sell price each</li></ul></div>'+
       '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<h4>Change</h4>'+ex('set bunny ears price to 10')+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
       '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: '+ex('pk means pachypodium')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
-      '</div><p class="fine" style="margin-top:6px">Press <b>Enter</b> to save. Typos are fine. Tap an example below to fill it in.</p></details>';
+      '</div><p class="fine" style="margin-top:6px">Press <b>Enter</b> to save. Typos are fine.</p></details>';
   }
   document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='cheatd'){try{localStorage.setItem('sp-cheat',e.target.open?'open':'closed')}catch(x){}}},true);
   function syncMode(){
@@ -2432,7 +2432,7 @@ body.sheetview .prompts{position:static;max-height:none}
     [].forEach.call(document.querySelectorAll('[data-mode]'),function(b){b.setAttribute('aria-pressed',b.getAttribute('data-mode')===mode?'true':'false')});
     ta.placeholder=m.placeholder;ta.className=mode==='speak'?'speak':'';
     if(mode==='type')$('sayhelp').innerHTML=cheatHtml();else $('sayhelp').textContent=m.help;
-    $('chips').innerHTML=m.eg.map(function(t,i){return '<button class="chip" type="button" data-eg="'+i+'">'+h(t)+'</button>'}).join('');
+    $('chips').innerHTML='';$('chips').hidden=true;
   }
   [].forEach.call(document.querySelectorAll('[data-mode]'),function(b){
     b.addEventListener('click',function(){
