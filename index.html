@@ -934,7 +934,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var want={soldQty:q,soldCost:Math.round(q*c*100)/100,soldRev:Math.round(q*pr*100)/100},patch={};
     /* desktop file: the values are set directly; shared online list: keep what other devices recorded and adjust ours */
     Object.keys(want).forEach(function(k){patch[k]=(typeof rawList!=='undefined')?want[k]:((Number((raw[id]||{})[k])||0)+(want[k]-it[k]))});
-    if(await guard(function(){return ref(id).update(patch)}))say('Saved. '+fullName(it)+': '+q+' sold, bought at '+money(c)+', sold at '+money(pr)+' each, profit '+money(q*(pr-c))+'.');
+    if(await guard(function(){return ref(id).update(patch)}))say('Saved. '+fullName(it)+': '+q+' sold, paid for '+money(c)+', sold at '+money(pr)+' each, profit '+money(q*(pr-c))+'.');
   });
   function wrapSold(sum,body){return '<details class="soldcard" id="soldd"'+(soldOpen?' open':'')+'><summary><span class="st">Profit from sales'+(cat==='all'?'':' · '+h(cat))+'</span> <span class="ss">'+h(sum)+'</span></summary>'+body+'</details>'}
   document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='soldd')soldOpen=e.target.open},true);
