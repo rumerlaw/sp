@@ -870,8 +870,8 @@ body.sheetview .prompts{position:static;max-height:none}
     $('sub').textContent=!loaded?'Loading…':allItems.length?(allItems.length+(allItems.length===1?' product':' products')+' in '+knownCats().length+(knownCats().length===1?' category':' categories')):'Nothing added yet';
     $('summary').innerHTML=
       stat('In stock'+(cat==='all'?'':' · '+cat),q.toLocaleString(),false)+
-      stat('Paid for',money(vc),false)+
-      stat('Sale price',money(vs),false)+
+      stat('Value at cost',money(vc),false)+
+      stat('Value at sale',money(vs),false)+
       stat('Running low',String(low),low>0);
     $('sold').innerHTML=soldCard(list.slice());
     $('allt').innerHTML=allItems.length?allCard():'';
@@ -996,7 +996,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var t=totals(vis);
     return '<div class="sheetwrap"><table class="sheet" data-key="'+h(key)+'"><thead><tr>'+
       '<th class="c1">Name</th><th>Category</th>'+th('genus','Genus / type','')+''+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+th('reorderAt','Remind at','n')+
-      th('vc','Paid for','n')+th('vs','Sale price','n')+th('pf','Profit','n')+'<th>Sold / add</th></tr></thead>'+
+      th('vc','Value at cost','n')+th('vs','Value at sale','n')+th('pf','Profit if sold','n')+'<th>Sold / add</th></tr></thead>'+
       '<tbody>'+rows+'</tbody><tfoot><tr><td class="c1">Total shown</td><td colspan="5"></td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td><td></td>'+
       '<td class="n" data-total="vc">'+hv('vc',money(t.vc))+'</td><td class="n" data-total="vs">'+hv('vs',money(t.vs))+'</td><td class="n" data-total="pf">'+hv('pf',money(t.pf))+'</td><td></td></tr></tfoot></table></div>';
   }
@@ -1070,7 +1070,7 @@ body.sheetview .prompts{position:static;max-height:none}
       '<div class="meta">'+(it.genus?'<span class="genus'+(hideF.genus?' off':'')+'" data-hide="genus" title="Tap to hide or show">'+(hideF.genus?'•••':h(it.genus))+'</span>':'')+'<span class="ctag">'+h(it.category)+'</span></div></div>'+
       '<div class="qty'+(hideF.qty?' off':'')+'" data-hide="qty" title="Tap to hide or show">'+(hideF.qty?'•••':it.qty)+'<small>in stock</small>'+tot+'</div>'+lines+
       '<div class="money">'+chip('cost','Cost',money(it.cost))+(it.vendor?chip('vendor','From',h(it.vendor)):'')+
-        (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit',money(it.qty*(it.price-it.cost))))+
+        (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit if sold',money(it.qty*(it.price-it.cost))))+
         chip('reorderAt','Remind at',String(Math.max(0,it.reorderAt)))+'</div>'+
       '<div class="acts">'+acts+'</div>'+ed+'</article>';
   }
@@ -1401,7 +1401,7 @@ body.sheetview .prompts{position:static;max-height:none}
     showSync();say(errMsg,true);
   }
   /* ---- spreadsheet file <-> list of items ---- */
-  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Total paid for'],['_vs','Total sale price'],['_pf','Profit'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
+  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Value at cost'],['_vs','Value at sale'],['_pf','Profit if sold'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
   var NVIS=14;function CL(k){for(var i=0;i<COLS.length;i++)if(COLS[i][0]===k)return colL(i);return 'A'}
   function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
   function colN(ref){var m=String(ref).match(/^([A-Z]+)/);if(!m)return -1;var n=0;for(var i=0;i<m[1].length;i++)n=n*26+(m[1].charCodeAt(i)-64);return n-1}
@@ -1447,7 +1447,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   function sumXml(list){
     var rows='<row r="1" ht="26" customHeight="1">'+cStr(1,0,'SP Inventory summary',4)+'</row><row r="3">';
-    ['Category','Lines','In stock','Paid for','Sale price','Profit','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
+    ['Category','Lines','In stock','Value at cost','Value at sale','Profit if sold','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
     rows+='</row>';
     var by={},order=[];
     list.forEach(function(it){var k=String(it.category||'Other');if(!by[k]){by[k]={n:0,q:0,vc:0,vs:0,sq:0,pm:0};order.push(k)}var a=by[k];a.n++;a.q+=it.qty;a.vc+=it.qty*it.cost;a.vs+=it.qty*it.price;a.sq+=it.soldQty;a.pm+=it.soldRev-it.soldCost});
