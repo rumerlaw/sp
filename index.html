@@ -767,7 +767,8 @@ body.sheetview .prompts{position:static;max-height:none}
     if(!hit)pool=pool.filter(dOK);
     pool.forEach(function(it){var m=norm(it.name);if(!hit&&m===n)hit=it});
     if(hit)return hit;
-    pool.forEach(function(it){var m=norm(fullName(it));if(!hit&&m.length>=3&&(m.indexOf(n)>=0||n.indexOf(m)>=0))hit=it});
+    var onlyGenus=!/\s/.test(String(bare).trim())&&!!genusOfWord(String(bare).trim());
+    pool.forEach(function(it){var m=norm(fullName(it));if(!hit&&m.length>=3&&((!onlyGenus&&m.indexOf(n)>=0)||n.indexOf(m)>=0))hit=it});
     pool.forEach(function(it){var m=norm(it.name);if(!hit&&m.length>=4&&n.indexOf(m)>=0)hit=it});
     if(hit)return hit;
     var best=null,bd=1e9,next=1e9;
@@ -1341,7 +1342,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var note=(r.cost==null||r.price==null)?' No price heard for one or both, so they start at $0.00. You can set them in the spreadsheet or with Edit.':'';
     var gN=r.genus?genusText(r.genus):(guessGenus(nm)||'');
     return {kind:'new',costTotal:r.costTotal!=null?r.costTotal:null,name:nm,genus:gN,category:r.category||guessCategory(nm,gN),vendor:r.vendor||'',qty:r.qty,cost:r.cost||0,price:r.price||0,
-      text:(sepLine?'New separate line: ':'New: ')+nm+(r.genus?' ('+genusText(r.genus)+')':'')+(r.vendor?' from '+r.vendor:'')+', '+r.qty+' in stock, cost '+money(r.cost||0)+' each'+(r.costTotal!=null?' ('+money(r.costTotal)+' for all '+r.qty+')':'')+', sells '+money(r.price||0)+' each.'+note};
+      text:(sepLine?'New separate line: ':'New: ')+(function(){var pn=plantName(nm,gN,r.category||guessCategory(nm,gN));return fullName(pn)+(pn.genus?' ('+pn.genus+')':'')})()+(r.vendor?' from '+r.vendor:'')+', '+r.qty+' in stock, cost '+money(r.cost||0)+' each'+(r.costTotal!=null?' ('+money(r.costTotal)+' for all '+r.qty+')':'')+', sells '+money(r.price||0)+' each.'+note};
   }
 
   /* ---------- saving ---------- */
@@ -2104,6 +2105,14 @@ body.sheetview .prompts{position:static;max-height:none}
      "x 4" is how many you got; the prices are for EACH one. A " x " between names (a hybrid) is part of the name. */
   var WORDN={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,an:1};
   function listLine(line){
+    /* short form: "1 trich 5 20" = how many, name, paid (each), sell price (each) */
+    var cf=expandShort(String(line)).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(\d+)\s+(.*?[a-z].*?)\s+\$?(\d+(?:\.\d+)?)(?:\s+\$?(\d+(?:\.\d+)?))?\s*$/i);
+    if(cf&&!/^\s*\d+\s+(?:sold|bought|got|add|set|x)\b/i.test(line)){
+      var cn=cf[2].replace(/[\s,;:-]+$/,'').trim();
+      var cg=guessGenus(cn),cw=cn.split(/\s+/)[0];
+      if(cg&&cw.toLowerCase()!==cg.toLowerCase()&&cw.slice(0,3).toLowerCase()===cg.slice(0,3).toLowerCase()&&cw.length>=5)cn=cg+cn.slice(cw.length);
+      return ['bought '+cf[1]+' '+cn+' at '+cf[3]+' each'+(cf[4]?' sell for '+cf[4]+' each':'')];
+    }
     var m=expandShort(String(line)).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(?:[-\u2022*]\s*)?(.+?)\s+[x\u00D7]\s*(\d+)\b\s*[,;-]?\s*(?:(?:i\s+)?(?:bought|paid|got|cost|costs|purchased)\s*(?:it|them|each)?\s*(?:for|at)?|@|at|for|-|,)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?\s*[,;-]?\s*(?:(?:and|but)\s+)?(?:(?:i\s+)?(?:will|to|i'?ll|can|should)\s+)?(?:(?:sell|selling|sells|retail|price)\s*(?:it|them)?\s*(?:for|at)?\s*\$?\s*(\d+(?:\.\d+)?)\s*\.?\s*(?:each|ea)?)?\s*[.,;]?\s*(.*)$/i);
     if(!m)return null;
     var name=m[1].replace(/[\s,;:-]+$/,'').trim();if(!/[a-z]/i.test(name))return null;
@@ -2372,8 +2381,8 @@ body.sheetview .prompts{position:static;max-height:none}
     },
     type:{
       placeholder:'sold 3 golden barrel',
-      help:'Short commands work best. Start with “sold”, “add”, “got” or “set”, then the plant. A name on its own asks how many and the prices. Press Enter to save. Typos are fine. Tap an example to fill it in.',
-      eg:['sold 3 golden barrel','bought 6 aloe at 5 from Black sell for 12','bought 6 candles at 3 sell for 10','set bunny ears price to 10']
+      help:'Quickest way to add: how many, the name, what you paid each, then the sell price each. For example “1 trich 5 20” adds 1 Trichocereus bought for $5, selling for $20. Put one on each line to add many at once. To sell, type “sold”, how many and the name, like “sold 2 golden barrel”. You can also write it out, like “bought 6 aloe at 5 sell for 12”. Shortcuts work: VRG = Variegated, H = Haworthia, CRE = Crested, TRICH = Trichocereus, SM / MED / LG = Small / Medium / Large. Add your own with “pk means pachypodium”, or type “shortcuts” to see them all. Press Enter to save. Typos are fine. Tap an example to fill it in.',
+      eg:['1 trich 5 20','sold 3 golden barrel','2 vrg h cooperi 12 30','bought 6 aloe at 5 from Black sell for 12','set bunny ears price to 10']
     }
   };
   function syncMode(){
