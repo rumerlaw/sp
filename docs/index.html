@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-e8be3VjxkuPDj2ax+oEnEfaKvY/lAfZmfuduqtRmosE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-JmC1fvE9UGS9iqmsdK3+WQZw55xiJfwkgGQpid5iRdk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -1017,7 +1017,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var rows=list.filter(function(it){return it.soldQty>0});
     if(!rows.length)return wrapSold('Nothing sold yet','<p class="fine">Sales you record show up here with what you paid, what you sold for and the profit.</p>');
     var q=0,rev=0,cost=0;rows.forEach(function(it){q+=it.soldQty;rev+=it.soldRev;cost+=it.soldCost});
-    rows.sort(function(a,b){return (b.soldRev-b.soldCost)-(a.soldRev-a.soldCost)});
+    rows.sort(function(a,b){return collate.compare(lineLabel(a),lineLabel(b))});
     var ed=soldEdit&&canWrite,r2=function(v){return Math.round(v*100)/100};
     return wrapSold('Profit '+(hideF.profit?'•••':money(rev-cost)),'<div class="grid">'+stat('Sold',q.toLocaleString(),false)+stat('Profit',money(rev-cost),false)+'</div>'+
       '<div class="tw"><table><tr><th>Product</th><th>Sold</th><th>Paid for</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(it){

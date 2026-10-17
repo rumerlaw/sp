@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-l8sMHGLE3x4avY+38ZdYI855py2upgAognnPcaOz+Do=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-JmC1fvE9UGS9iqmsdK3+WQZw55xiJfwkgGQpid5iRdk=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -1013,7 +1013,7 @@ body.sheetview .prompts{position:static;max-height:none}
     var rows=list.filter(function(it){return it.soldQty>0});
     if(!rows.length)return wrapSold('Nothing sold yet','<p class="fine">Sales you record show up here with what you paid, what you sold for and the profit.</p>');
     var q=0,rev=0,cost=0;rows.forEach(function(it){q+=it.soldQty;rev+=it.soldRev;cost+=it.soldCost});
-    rows.sort(function(a,b){return (b.soldRev-b.soldCost)-(a.soldRev-a.soldCost)});
+    rows.sort(function(a,b){return collate.compare(lineLabel(a),lineLabel(b))});
     var ed=soldEdit&&canWrite,r2=function(v){return Math.round(v*100)/100};
     return wrapSold('Profit '+(hideF.profit?'•••':money(rev-cost)),'<div class="grid">'+stat('Sold',q.toLocaleString(),false)+stat('Profit',money(rev-cost),false)+'</div>'+
       '<div class="tw"><table><tr><th>Product</th><th>Sold</th><th>Paid for</th><th>Sold at</th><th>Profit</th></tr>'+rows.map(function(it){
@@ -2568,7 +2568,7 @@ body.sheetview .prompts{position:static;max-height:none}
   async function dbxLogin(){
     var ver=rnd(48),ch=b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ver))),st=rnd(16);
     try{sessionStorage.setItem('sp-dbx-ver',ver);sessionStorage.setItem('sp-dbx-state',st)}catch(e){}
-    location.href='https://www.dropbox.com/oauth2/authorize?client_id='+encodeURIComponent(DBXC.key)+'&response_type=code&code_challenge='+ch+'&code_challenge_method=S256&token_access_type=offline&redirect_uri='+encodeURIComponent(DBXC.redirect)+'&state='+st;
+    location.href='https://www.dropbox.com/oauth2/authorize?client_id='+encodeURIComponent(DBXC.key)+'&response_type=code&code_challenge='+ch+'&code_challenge_method=S256&token_access_type=offline&scope='+encodeURIComponent('files.metadata.read files.content.read files.content.write')+'&redirect_uri='+encodeURIComponent(DBXC.redirect)+'&state='+st;
   }
   async function dbxTokenCall(body){
     var r=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body).toString()});
@@ -2600,7 +2600,12 @@ body.sheetview .prompts{position:static;max-height:none}
       else{h['Content-Type']='application/json';opt.body=JSON.stringify(arg)}
       var r=await fetch('https://'+host+'.dropboxapi.com/2/'+endpoint,opt);
       if(r.status===401&&tries===0)continue;
-      if(!r.ok){var t='';try{t=await r.text()}catch(e){}var er=new Error(/conflict/.test(t)?'conflict':(/not_found/.test(t)?'That file is not in Dropbox any more.':'Dropbox said no ('+r.status+').'));if(/conflict/.test(t))er.code='conflict';if(/not_found/.test(t))er.code='notfound';throw er}
+      if(!r.ok){var t='';try{t=await r.text()}catch(e){}
+        var scope=(t.match(/required scope '([a-z.]+)'/)||t.match(/missing_scope[^a-z]*([a-z.]+\.[a-z.]+)/)||[])[1];
+        if(scope||/missing_scope|required scope/.test(t)){try{localStorage.removeItem('sp-dbx-rt')}catch(x){}dbxTok=null;
+          var se=new Error('Your Dropbox app is missing a permission'+(scope?' ('+scope+')':'')+'. In the Dropbox App Console, open your app’s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, click Submit, then tap Connect Dropbox here again.');se.code='scope';throw se}
+        if(/disabled|not.*enabled|additional users|development/i.test(t)&&r.status<500){var de=new Error('Dropbox says this app is not allowed for this account yet. In the Dropbox App Console, open your app’s Settings and click “Enable additional users”, then try again. ('+String(t).slice(0,140)+')');throw de}
+        var er=new Error(/conflict/.test(t)?'conflict':(/not_found/.test(t)?'That file is not in Dropbox any more.':'Dropbox said no ('+r.status+'): '+String(t).replace(/\s+/g,' ').slice(0,180)));if(/conflict/.test(t))er.code='conflict';if(/not_found/.test(t))er.code='notfound';throw er}
       return r;
     }
   }
@@ -2634,7 +2639,7 @@ body.sheetview .prompts{position:static;max-height:none}
         return e['.tag']==='folder'?'<button class="btn dbxrow" type="button" data-dbx-dir="'+h(e.path_lower)+'">📁 '+h(e.name)+'</button>':'<button class="btn dbxrow primary" type="button" data-dbx-file="'+h(e.path_display||e.path_lower)+'">📄 '+h(e.name)+'</button>'}).join('');
       box.innerHTML='<p><strong>'+h(dir?('Dropbox'+dir):'Dropbox')+'</strong></p><div class="dbxlist">'+up+(rows||'<p class="fine">No folders or spreadsheets here.</p>')+'</div>'+
         '<div class="row" style="margin-top:10px"><button class="btn" type="button" id="dbx-new">Make a new spreadsheet here</button></div>';
-    }catch(e){box.innerHTML='<p class="msg err">'+h(e.message||'Could not read your Dropbox.')+'</p>'}
+    }catch(e){box.innerHTML='<p class="msg err">'+h(e.message||'Could not read your Dropbox.')+'</p>';if(!dbxLinked()){$('dbx-connect').hidden=false;$('dbx-out').hidden=true}}
   }
   document.addEventListener('click',async function(e){
     var t=e.target.closest&&e.target.closest('[data-dbx-dir],[data-dbx-file],#dbx-new,#dbx-connect,#dbx-out');if(!t)return;
