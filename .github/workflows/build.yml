@@ -42,7 +42,16 @@ jobs:
         with:
           node-version: 22
       # Installs exactly the versions in package-lock.json, checked against their fingerprints.
-      - run: npm ci --no-audit --no-fund
+      - name: Install exactly the locked building blocks
+        shell: bash
+        run: if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Check every building block is signed by the npm registry
+        shell: bash
+        run: |
+          set +e
+          npm audit signatures > "$RUNNER_TEMP/signatures.txt" 2>&1; echo "exit=$?" >> "$RUNNER_TEMP/signatures.txt"
+          cat "$RUNNER_TEMP/signatures.txt"
+          exit 0
       - run: npx electron-builder --publish never
       # Start the finished app once to prove it opens with all its safety locks on.
       - name: Test the finished app (open, add, sell, save, backup, reopen)
@@ -82,6 +91,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           f="$RUNNER_TEMP/smoke.txt"; [ -f "$f" ] || echo "no report written" > "$f"
+          [ -f "$RUNNER_TEMP/signatures.txt" ] && cp "$RUNNER_TEMP/signatures.txt" "test-report-signatures-${RUNNER_OS}.txt" && gh release upload latest "test-report-signatures-${RUNNER_OS}.txt" --clobber
           cp "$f" "test-report-${RUNNER_OS}.txt"; gh release upload latest "test-report-${RUNNER_OS}.txt" --clobber
           if [ -f "$RUNNER_TEMP/dmg-check.txt" ]; then { cat "$RUNNER_TEMP/dmg-check.txt"; echo; cat "$RUNNER_TEMP/smoke-dmg.txt" 2>/dev/null; } > test-report-dmg.txt; gh release upload latest test-report-dmg.txt --clobber; fi
       - name: Fingerprints of the files

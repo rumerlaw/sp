@@ -10,6 +10,9 @@ const SMOKE_DIR = path.join(os.tmpdir(), 'sp-smoke-' + process.pid);
 /* The app keeps no passwords or secrets, so it never needs the Mac keychain (no "wants to use your confidential info" prompt). */
 if (process.platform === 'darwin') app.commandLine.appendSwitch('use-mock-keychain');
 const blocked = [];
+app.enableSandbox();
+let PAGE_CSP = '';
+try { const m = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').match(/http-equiv="Content-Security-Policy" content="([^"]+)"/); if (m) PAGE_CSP = m[1]; } catch (e) {}
 /* each test run starts like a brand-new install, with nothing remembered */
 if (SMOKE) app.setPath('userData', path.join(SMOKE_DIR, 'profile'));
 const SMOKE_XLSX = path.join(SMOKE_DIR, 'Smoke Test.xlsx');
@@ -50,7 +53,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false, sandbox: true,
       webSecurity: true, allowRunningInsecureContent: false, spellcheck: false,
-      devTools: !app.isPackaged, navigateOnDragDrop: false, safeDialogs: true
+      devTools: !app.isPackaged, navigateOnDragDrop: false, safeDialogs: true,
+      webviewTag: false, nodeIntegrationInWorker: false, nodeIntegrationInSubFrames: false, experimentalFeatures: false
     }
   });
   win.setMenuBarVisibility(false);
@@ -248,7 +252,9 @@ app.whenReady().then(() => {
       const u = new URL(req.url), name = decodeURIComponent(u.pathname).replace(/^\/+/, '');
       if (u.host !== 'sp' || !Object.prototype.hasOwnProperty.call(SERVED, name)) return new Response('Not found', { status: 404 });
       const body = await fs.promises.readFile(path.join(__dirname, name));
-      return new Response(body, { headers: { 'content-type': SERVED[name], 'x-content-type-options': 'nosniff' } });
+      const headers = { 'content-type': SERVED[name], 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'cross-origin-opener-policy': 'same-origin' };
+      if (name === 'index.html' && PAGE_CSP) headers['content-security-policy'] = PAGE_CSP;
+      return new Response(body, { headers });
     } catch (err) { return new Response('Not found', { status: 404 }); }
   });
   /* No camera, microphone, location or other device permissions are ever granted. */

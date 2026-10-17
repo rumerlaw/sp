@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-xy/wCq+zTHvMbPPyWvxpluyN0YGroZEo0SEjMiwMFDg=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -1533,7 +1533,9 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   async function readXlsx(bytes){
     if(!isZip(bytes))bytes=await textToXlsx(bytes);
-    var z=await JSZip.loadAsync(bytes),by={cactus:[],pot:[]};
+    var z=await JSZip.loadAsync(bytes),by={cactus:[],pot:[]},unz=0;
+    z.forEach(function(pth,f){unz+=(f&&f._data&&f._data.uncompressedSize)||0});
+    if(unz>300*1024*1024)throw new Error('This file is too big to be a stock list.');
     async function get(p){var f=z.file(p.replace(/^\//,''));return f?f.async('string'):null}
     var wb=await get('xl/workbook.xml');if(!wb)throw new Error('This file is not an Excel workbook.');
     var rels=await get('xl/_rels/workbook.xml.rels'),relMap={};
