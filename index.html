@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-xy/wCq+zTHvMbPPyWvxpluyN0YGroZEo0SEjMiwMFDg=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-0V8U4YZ2PBcHYHCiLi04ZDc0IPuhkTbLjBbFvvtuKAU=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -1420,7 +1420,7 @@ body.sheetview .prompts{position:static;max-height:none}
     showSync();say(errMsg,true);
   }
   /* ---- spreadsheet file <-> list of items ---- */
-  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Value at cost'],['_vs','Value at sale'],['_pf','Profit if sold'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example']];
+  var COLS=[['name','Name'],['category','Category'],['genus','Genus / type'],['vendor','Vendor'],['cost','Cost each'],['price','Sell price'],['qty','In stock'],['reorderAt','Remind at'],['reorderQty','Usual reorder'],['soldQty','Sold so far'],['_pm','Profit from sold'],['_vc','Value at cost'],['_vs','Value at sale'],['_pf','Profit if sold'],['soldRev','Sales total (do not edit)'],['soldCost','Cost of sold (do not edit)'],['onOrder','On order'],['id','ID (do not edit)'],['onOrderHow','Order how'],['snoozedQty','Snoozed at'],['example','Example'],['snapSold','Sold (app, do not edit)'],['snapQty','In stock (app, do not edit)']];
   var NVIS=14;function CL(k){for(var i=0;i<COLS.length;i++)if(COLS[i][0]===k)return colL(i);return 'A'}
   function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
   function colN(ref){var m=String(ref).match(/^([A-Z]+)/);if(!m)return -1;var n=0;for(var i=0;i<m[1].length;i++)n=n*26+(m[1].charCodeAt(i)-64);return n-1}
@@ -1441,10 +1441,12 @@ body.sheetview .prompts{position:static;max-height:none}
     list.forEach(function(it,n){
       var r=n+2,vc=it.qty*it.cost,vs=it.qty*it.price,pm=it.soldRev-it.soldCost,L=function(k){return CL(k)+r};
       var cells=[cStr(r,C('name'),it.name,0),cStr(r,C('category'),it.category||'',0),cStr(r,C('genus'),it.genus||'',0),cStr(r,C('vendor'),it.vendor||'',0),
-        cNum(r,C('cost'),it.cost,2),cNum(r,C('price'),it.price,2),cNum(r,C('qty'),it.qty,3),cNum(r,C('reorderAt'),it.reorderAt,3),cNum(r,C('reorderQty'),it.reorderQty,3),cNum(r,C('soldQty'),it.soldQty,3),
-        cFor(r,C('_pm'),L('soldRev')+'-'+L('soldCost'),pm,2),cFor(r,C('_vc'),L('cost')+'*'+L('qty'),vc,2),cFor(r,C('_vs'),L('price')+'*'+L('qty'),vs,2),cFor(r,C('_pf'),L('_vs')+'-'+L('_vc'),vs-vc,2),
+        cNum(r,C('cost'),it.cost,2),cNum(r,C('price'),it.price,2),cFor(r,C('qty'),'MAX(0,'+L('snapQty')+'-('+L('soldQty')+'-'+L('snapSold')+'))',it.qty,3),cNum(r,C('reorderAt'),it.reorderAt,3),cNum(r,C('reorderQty'),it.reorderQty,3),cNum(r,C('soldQty'),it.soldQty,3),
+        cFor(r,C('_pm'),L('soldRev')+'-'+L('soldCost')+'+('+L('soldQty')+'-'+L('snapSold')+')*('+L('price')+'-'+L('cost')+')',pm,2),cFor(r,C('_vc'),L('cost')+'*'+L('qty'),vc,2),cFor(r,C('_vs'),L('price')+'*'+L('qty'),vs,2),cFor(r,C('_pf'),L('_vs')+'-'+L('_vc'),vs-vc,2),
         cNum(r,C('soldRev'),it.soldRev,2),cNum(r,C('soldCost'),it.soldCost,2),cNum(r,C('onOrder'),it.onOrder,3),cStr(r,C('id'),it.id,0),cStr(r,C('onOrderHow'),it.onOrderHow||'',0),
-        (it.snoozedQty==null?'':cNum(r,C('snoozedQty'),it.snoozedQty,3)),cStr(r,C('example'),it.example?'yes':'',0)];
+        (it.snoozedQty==null?'':cNum(r,C('snoozedQty'),it.snoozedQty,3)),cStr(r,C('example'),it.example?'yes':'',0),
+        /* what the app last saved, so a change typed straight into the spreadsheet can be spotted and finished off */
+        cNum(r,C('snapSold'),it.soldQty,3),cNum(r,C('snapQty'),it.qty,3)];
       rows+='<row r="'+r+'">'+cells.join('')+'</row>';
     });
     /* totals at the bottom (the app skips this row when it reads the file) */
@@ -1455,7 +1457,7 @@ body.sheetview .prompts{position:static;max-height:none}
       if(k in T)tot+=cFor(tr,ci,'SUM('+colL(ci)+'2:'+colL(ci)+last+')',T[k],(k==='qty'||k==='soldQty')?7:6);
       else tot+='<c r="'+colL(ci)+tr+'" s="8"/>';}
     rows+=tot+'</row>';
-    var widths=[28,14,20,22,11,11,10,10,12,11,14,13,13,13,12,12,10,18,10,10,9];
+    var widths=[28,14,20,22,11,11,10,10,12,11,14,13,13,13,12,12,10,18,10,10,9,10,10];
     var cols='<cols>'+widths.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"'+(i>=NVIS?' hidden="1"':'')+'/>'}).join('')+'</cols>';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+rows+'</sheetData><autoFilter ref="A1:'+colL(NVIS-1)+last+'"/></worksheet>';
   }
@@ -1553,6 +1555,7 @@ body.sheetview .prompts{position:static;max-height:none}
       reorderAt:['remind at','reorder at','reorder level','reorder point','minimum'],
       reorderQty:['usual reorder','reorder qty','reorder quantity'],onOrder:['on order'],
       soldQty:['sold so far','units sold','sold','qty sold','quantity sold'],
+      snapSold:['sold (app, do not edit)'],snapQty:['in stock (app, do not edit)'],
       soldRev:['money in','sales total (money in)','sales total','revenue','money in from sold','sales total (do not edit)'],
       soldCost:['cost of sold','cost of units sold','cost of sold (do not edit)'],
       category:['category','categories','product type','item type','department','group','section'],
@@ -1582,11 +1585,12 @@ body.sheetview .prompts{position:static;max-height:none}
       var sh=sheets[si],lname=String(sh.name||'').toLowerCase();
       if(!relMap[sh.rid])continue;
       var xml=await get(relMap[sh.rid]);if(!xml)continue;
-      var doc=parseXml(xml),rows={},maxR=0,isShort=lname==='shortcuts';
+      var doc=parseXml(xml),rows={},noVal={},maxR=0,isShort=lname==='shortcuts';
       [].forEach.call(doc.getElementsByTagName('row'),function(row){
         var rn=Number(row.getAttribute('r'));
         kids(row,'c').forEach(function(c){
           var ci=colN(c.getAttribute('r')),t=c.getAttribute('t'),v=kids(c,'v')[0],val=null;
+          if(!v&&kids(c,'f')[0])(noVal[rn]=noVal[rn]||{})[ci]=1;
           if(t==='inlineStr'){var is=kids(c,'is')[0];val=is?txt(is):''}
           else if(v){var raw=v.textContent;if(t==='s')val=sst[Number(raw)]||'';else if(t==='str'||t==='e')val=raw;else if(t==='b')val=raw==='1'?1:0;else{var nn=Number(raw);val=isFinite(nn)?nn:raw}}
           if(val===null||val==='')return;
@@ -1617,7 +1621,9 @@ body.sheetview .prompts{position:static;max-height:none}
         var num=function(k,d){var v=g(k);if(v===null||v==='')return d;var n=Number(String(v).replace(/[$,\s]/g,''));return isFinite(n)?n:d};
         var x={id:id,name:nm,category:g('category')==null?(kind==='pot'?'Pots':''):String(g('category')).trim(),genus:g('genus')==null?'':String(g('genus')),vendor:g('vendor')==null?'':String(g('vendor')),cost:num('cost',0),price:num('price',0),qty:Math.max(0,Math.round(num('qty',0))),reorderAt:num('reorderAt',1),reorderQty:num('reorderQty',10),onOrder:num('onOrder',0),
           onOrderHow:g('onOrderHow')==='inperson'?'inperson':'order',snoozedQty:num('snoozedQty',null),example:/^(y|yes|true|1)$/i.test(String(g('example')||'')),kind:kind,
-          bundled:/^(y|yes|true|1)$/i.test(String(g('bundled')||'')),soldQty:num('soldQty',0),soldRev:num('soldRev',0),soldCost:num('soldCost',0)};
+          bundled:/^(y|yes|true|1)$/i.test(String(g('bundled')||'')),soldQty:num('soldQty',0),soldRev:num('soldRev',0),soldCost:num('soldCost',0),snapSold:num('snapSold',null),snapQty:num('snapQty',null)};
+        /* "In stock" is a formula; if a program saved it without working it out, work it out here the same way */
+        if(map.qty!=null&&noVal[r]&&noVal[r][map.qty]&&x.snapQty!=null&&x.snapSold!=null)x.qty=Math.max(0,Math.round(x.snapQty-(x.soldQty-x.snapSold)));
         if(map.soldRev==null&&x.soldQty>0){x.soldRev=x.soldQty*x.price;x.soldCost=x.soldQty*x.cost}
         by[kind].push(x);
       }
@@ -1626,7 +1632,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   function flat(by){return by.cactus.concat(by.pot)}
   function rawToBy(raws){return raws.map(function(x){return mapItem(x.id,x)})}
-  var rawList=[],encPw=null,wasEnc=false,plainBytes=null,lastBackup='',backupErr='',idleTimer=null,fileFmt={isApp:true,hasContent:false},convertOk=false;
+  var rawList=[],sheetEdits=[],encPw=null,wasEnc=false,plainBytes=null,lastBackup='',backupErr='',idleTimer=null,fileFmt={isApp:true,hasContent:false},convertOk=false;
   function foreign(){return !fileFmt.isApp&&fileFmt.hasContent&&!convertOk}
   /* ---------- password encryption: the same "Encrypt with Password" Excel uses (Agile, AES-256, SHA-512) ---------- */
   var SHA512=(function(){
@@ -1857,6 +1863,19 @@ body.sheetview .prompts{position:static;max-height:none}
     USERSHORT=by.shortcuts||{};
     fileFmt={isApp:by.isApp,hasContent:by.hasContent,n:by.cactus.length+by.pot.length,by:by};
     lastMtime=f.mtime;rawList=flat(by);
+    /* "Sold so far" changed straight in the spreadsheet (say, at the market): take them off "In stock"
+       (unless that was already done there too) and add the sale and its profit, at that line's prices */
+    sheetEdits=[];
+    rawList.forEach(function(x){
+      if(x.snapSold==null||x.snapQty==null)return;
+      var d=Math.round((Number(x.soldQty)||0)-x.snapSold);if(!d)return;
+      var qc=Math.round((Number(x.qty)||0)-x.snapQty);
+      if(qc===0)x.qty=Math.max(0,(Number(x.qty)||0)-d);
+      x.soldRev=Math.max(0,(Number(x.soldRev)||0)+d*(Number(x.price)||0));
+      x.soldCost=Math.max(0,(Number(x.soldCost)||0)+d*(Number(x.cost)||0));
+      sheetEdits.push((d>0?'sold '+d:'un-sold '+(-d))+' '+x.name+', now '+x.qty+' in stock');
+    });
+    rawList.forEach(function(x){delete x.snapSold;delete x.snapQty});
     /* names that repeat the genus are tidied here and written back with the next change */
     var bestCat={};rawList.forEach(function(x){var c=String(x.category||'').trim();if(!c)return;var k=catKey(c),b=bestCat[k];if(!b||(/^[a-z]/.test(b)&&/^[A-Z]/.test(c)))bestCat[k]=c});
     Object.keys(bestCat).forEach(function(k){var c=bestCat[k];if(/^[a-z]/.test(c))bestCat[k]=c.charAt(0).toUpperCase()+c.slice(1)});
@@ -2541,7 +2560,7 @@ body.sheetview .prompts{position:static;max-height:none}
     db=file;$('setup').hidden=true;$('app').hidden=false;
     $('sharebtn').hidden=false;$('fname').textContent=shortPath(file);$('sharebtn').title=(file.path||file.name)+' (click for file options)';showWhere();
     if(F.path!==backedUpFor&&F.name!==backedUpFor)sessionNew=true;
-    publish();startWatch();
+    publish();startWatch();finishSheetEdits();
     try{
       var k1='sp-all-1:'+(F.path||F.name);
       if(IS_NATIVE&&canWrite&&!localStorage.getItem(k1)&&rawList.some(function(x){return Number(x.reorderAt)!==1||Number(x.reorderQty)!==1})){
@@ -2598,13 +2617,18 @@ body.sheetview .prompts{position:static;max-height:none}
   });
   function fmtTime(d){return d?d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'—'}
   var watching=false;
+  function finishSheetEdits(){
+    if(!sheetEdits.length||!canWrite||foreign())return;
+    var msg='From the spreadsheet: '+sheetEdits.join('; ')+'. Profit updated.';
+    commit(function(){}).then(function(){if(!errMsg)say(msg)});
+  }
   function startWatch(){
     if(watching)return;watching=true;
     async function check(){
       if(!F||busy||!$('unlock').hidden)return;
       var a=document.activeElement;if(a&&a.getAttribute&&a.getAttribute('data-f'))return;
       if(edit)return;
-      try{var m=await F.stat();if(m!==lastMtime){await loadFresh();publish();errMsg='';showSync()}}catch(e){if(e&&e.code==='locked')askUnlock()}
+      try{var m=await F.stat();if(m!==lastMtime){await loadFresh();publish();errMsg='';showSync();finishSheetEdits()}}catch(e){if(e&&e.code==='locked')askUnlock()}
     }
     setInterval(check,4000);window.addEventListener('focus',check);document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});
     window.__cactusCheck=check;
