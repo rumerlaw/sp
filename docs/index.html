@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-JmC1fvE9UGS9iqmsdK3+WQZw55xiJfwkgGQpid5iRdk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-In5uoJNPyeh5rnkWfCM2Ki/92ZanROKxqJ3AqDrlFbw=' 'sha256-IS+Nz+JZI/Hzgs+tSI3YVwMRGaXauzsRfRU6amfJLKA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -69,6 +69,7 @@ p{margin:0}
 .popcard .prompt{box-shadow:0 8px 30px rgba(0,0,0,.5);background:var(--surface)}
 .syncbar{margin:0 0 10px;padding:9px 12px;border-radius:10px;border:2px solid var(--bloom,#e5484d);background:var(--bloom-bg,rgba(229,72,77,.12));font-weight:600;font-size:14px}
 .syncbar.ok{border-color:var(--line);background:var(--surface)}
+.syncbar.wait{border-color:#E8A33D;background:rgba(232,163,61,.12)}
 .cats{display:flex;gap:8px;margin:0 0 12px}
 .cats .btn{flex:1;font-size:16px;min-height:44px}
 .cats .btn[aria-pressed=true]{background:var(--accent,#2ecc71);color:#04110a;border-color:var(--accent,#2ecc71)}
@@ -1418,10 +1419,11 @@ body.sheetview .prompts{position:static;max-height:none}
   var F=null,QTY_KEYS=['qty','soldQty','soldRev','soldCost'],queue=Promise.resolve(),busy=0,lastMtime=0,lastSaved=null,errMsg='';
   /* the desktop app asks this before closing, and waits until every change is saved */
   window.__spBusy=function(){return busy>0};
-  setShortcut=function(k,v){if(!F)return Promise.resolve(false);return commit(function(){if(v)USERSHORT[k]=v;else delete USERSHORT[k]}).then(function(){return !errMsg})};
+  setShortcut=function(k,v){if(!F)return Promise.resolve(false);var op={t:'sc',k:k,v:v||null};return commit(opFn(op),op).then(function(){return !errMsg})};
   function showSync(){
     var el=$('sync');
     if(errMsg){el.hidden=false;el.className='syncbar';el.textContent=errMsg;return}
+    if(OUTBOX.length){el.hidden=false;el.className='syncbar wait';el.textContent=(F&&F.offline?'No signal. ':'Sending to Dropbox… ')+OUTBOX.length+(OUTBOX.length===1?' change is':' changes are')+' saved on this phone and will be sent to Dropbox as soon as you have signal.';return}
     if(busy){el.hidden=false;el.className='syncbar ok';el.textContent='Saving to the spreadsheet…';return}
     el.hidden=true;
   }
@@ -1904,6 +1906,7 @@ body.sheetview .prompts{position:static;max-height:none}
       sheetEdits.push((d>0?'sold '+d:'un-sold '+(-d))+' '+x.name+', now '+x.qty+' in stock');
     });
     rawList.forEach(function(x){delete x.snapSold;delete x.snapQty});
+    if(OUTBOX.length)OUTBOX.forEach(function(op){try{opFn(op)()}catch(e){}});
     /* names that repeat the genus are tidied here and written back with the next change */
     var bestCat={};rawList.forEach(function(x){var c=String(x.category||'').trim();if(!c)return;var k=catKey(c),b=bestCat[k];if(!b||(/^[a-z]/.test(b)&&/^[A-Z]/.test(c)))bestCat[k]=c});
     Object.keys(bestCat).forEach(function(k){var c=bestCat[k];if(/^[a-z]/.test(c))bestCat[k]=c.charAt(0).toUpperCase()+c.slice(1)});
@@ -1923,24 +1926,47 @@ body.sheetview .prompts{position:static;max-height:none}
     if(!(IS_NATIVE||(F&&F.backup))||!F||!F.path||backedUpFor===F.path||!fileFmt.hasContent)return;
     /* a file that still has the old password is backed up without it, so the backup always opens */
     try{lastBackup=F.backup?await F.backup(wasEnc&&plainBytes?plainBytes:undefined):await window.cactusNative.backup(F.path,wasEnc&&plainBytes?plainBytes:undefined);backedUpFor=F.path;backupErr='';showBackupInfo()}
-    catch(e){backupErr=String(e&&e.message||e).replace(/^Error invoking remote method '[^']*': (Error: )?/,'');showBackupInfo();
+    catch(e){if(e&&e.code==='offline')return;backupErr=String(e&&e.message||e).replace(/^Error invoking remote method '[^']*': (Error: )?/,'');showBackupInfo();
       setTimeout(function(){say('Your change was saved, but the backup copy could not be made: '+backupErr,true)},50)}
   }
   function publish(){allItems=rawList.map(function(x){return mapItem(x.id,x)});loaded=true;recompute()}
   /* one change at a time: read the file, apply, save, release */
-  function commit(fn){
+  function commit(fn,op){
     busy++;showSync();
     queue=queue.then(async function(){
       for(var att=0;;att++){
         await loadFresh();
         if(foreign()){var fe=new Error('foreign');fe.code='foreign';throw fe}
-        if(fn()===false){publish();return}
+        var rv=fn();
+        if(rv===false&&!OUTBOX.length){publish();return}
+        if(F&&F.offline){queueOp(op);errMsg='';publish();return}
         await backupOnce();
-        try{await saveRaw();break}catch(se){if(se&&se.code==='conflict'&&att<3)continue;throw se}
+        try{await saveRaw();break}
+        catch(se){
+          if(se&&se.code==='conflict'&&att<3)continue;
+          if(se&&se.code==='offline'){queueOp(op);errMsg='';publish();return}
+          throw se;
+        }
       }
+      if(OUTBOX.length){OUTBOX=[];saveOutbox()}
       errMsg='';publish();
     }).catch(function(e){fail(e);return e&&e.code==='locked'?null:loadFresh().then(publish).catch(function(){})}).then(function(){busy--;showSync()});
     return queue;
+  }
+  /* changes waiting on this phone while there is no signal (phone version only) */
+  var OUTBOX=[];
+  function outKey(){return 'sp-outbox:'+(F&&F.path||'')}
+  function loadOutbox(){try{OUTBOX=JSON.parse(localStorage.getItem(outKey())||'[]')||[]}catch(e){OUTBOX=[]}}
+  function saveOutbox(){try{if(OUTBOX.length)localStorage.setItem(outKey(),JSON.stringify(OUTBOX));else localStorage.removeItem(outKey())}catch(e){}}
+  function queueOp(op){if(!op)return;OUTBOX.push(op);saveOutbox();showSync()}
+  function opFn(op){
+    return function(){
+      if(op.t==='u'){var x=rawList.filter(function(r){return r.id===op.id})[0];if(!x)return false;
+        Object.keys(op.send).forEach(function(k){var sv=op.send[k];if(sv.d!==undefined)x[k]=Math.max(0,(Number(x[k])||0)+sv.d);else x[k]=sv.v})}
+      else if(op.t==='s'){var d=JSON.parse(JSON.stringify(op.d)),use=op.id,k=2;while(rawList.some(function(r){return r.id===use}))use=op.id+'-'+(k++);d.id=use;rawList.push(d)}
+      else if(op.t==='d'){rawList=rawList.filter(function(r){return r.id!==op.id})}
+      else if(op.t==='sc'){if(op.v)USERSHORT[op.k]=op.v;else delete USERSHORT[op.k]}
+    };
   }
   function localUpdate(id,patch){
     var cur=allItems.filter(function(i){return i.id===id})[0];
@@ -1953,10 +1979,7 @@ body.sheetview .prompts{position:static;max-height:none}
     });
     recompute();
     if(!Object.keys(send).length)return;
-    commit(function(){
-      var x=rawList.filter(function(r){return r.id===id})[0];if(!x)return false;
-      Object.keys(send).forEach(function(k){if(send[k].d!==undefined)x[k]=Math.max(0,(Number(x[k])||0)+send[k].d);else x[k]=send[k].v});
-    });
+    var op={t:'u',id:id,send:send};commit(opFn(op),op);
   }
   var ref=function(id){return {
     update:function(patch){localUpdate(id,patch);return Promise.resolve()},
@@ -1964,16 +1987,13 @@ body.sheetview .prompts{position:static;max-height:none}
       if(!F)return Promise.resolve();
       var d=JSON.parse(JSON.stringify(data));d.id=id;
       allItems=allItems.filter(function(i){return i.id!==id});allItems.push(mapItem(id,d));recompute();
-      commit(function(){
-        var use=id,k=2;while(rawList.some(function(r){return r.id===use}))use=id+'-'+(k++);
-        d.id=use;rawList.push(d);
-      });
+      var op={t:'s',id:id,d:d};commit(opFn(op),op);
       return Promise.resolve();
     },
     delete:function(){
       if(!F)return Promise.resolve();
       allItems=allItems.filter(function(i){return i.id!==id});recompute();
-      commit(function(){rawList=rawList.filter(function(r){return r.id!==id})});
+      var op={t:'d',id:id};commit(opFn(op),op);
       return Promise.resolve();
     }
   }};
@@ -2575,7 +2595,7 @@ body.sheetview .prompts{position:static;max-height:none}
     location.href='https://www.dropbox.com/oauth2/authorize?client_id='+encodeURIComponent(DBXC.key)+'&response_type=code&code_challenge='+ch+'&code_challenge_method=S256&token_access_type=offline&scope='+encodeURIComponent('files.metadata.read files.content.read files.content.write')+'&redirect_uri='+encodeURIComponent(DBXC.redirect)+'&state='+st;
   }
   async function dbxTokenCall(body){
-    var r=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body).toString()});
+    var r;try{r=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body).toString()})}catch(ne){var oe=new Error('No signal.');oe.code='offline';throw oe}
     if(!r.ok)throw new Error('Dropbox sign-in did not work. Tap “Connect Dropbox” again.');
     return r.json();
   }
@@ -2602,7 +2622,7 @@ body.sheetview .prompts{position:static;max-height:none}
       var opt={method:'POST',headers:h};
       if(isContent){h['Dropbox-API-Arg']=argJson(arg);if(body!==undefined){h['Content-Type']='application/octet-stream';opt.body=body}}
       else{h['Content-Type']='application/json';opt.body=JSON.stringify(arg)}
-      var r=await fetch('https://'+host+'.dropboxapi.com/2/'+endpoint,opt);
+      var r;try{r=await fetch('https://'+host+'.dropboxapi.com/2/'+endpoint,opt)}catch(ne){var oe=new Error('No signal.');oe.code='offline';throw oe}
       if(r.status===401&&tries===0)continue;
       if(!r.ok){var t='';try{t=await r.text()}catch(e){}
         var scope=(t.match(/required scope '([a-z.]+)'/)||t.match(/missing_scope[^a-z]*([a-z.]+\.[a-z.]+)/)||[])[1];
@@ -2613,13 +2633,22 @@ body.sheetview .prompts{position:static;max-height:none}
       return r;
     }
   }
+  /* the last copy of the spreadsheet is kept on the phone so the app opens with no signal */
+  function cachePut(path,b){try{var s='',i;for(i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));localStorage.setItem('sp-dbx-cache:'+path.toLowerCase(),btoa(s))}catch(e){}}
+  function cacheGet(path){try{var v=localStorage.getItem('sp-dbx-cache:'+path.toLowerCase());if(!v)return null;var s=atob(v),b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b}catch(e){return null}}
+  /* when signal comes back, send what was waiting */
+  function flushOutbox(){if(IS_DBX&&F&&OUTBOX.length&&!busy)commit(function(){})}
+  if(IS_DBX){window.addEventListener('online',function(){setTimeout(flushOutbox,800)});setInterval(flushOutbox,20000)}
   function dbxFile(path,name){
     var rev=null,f={name:name||path.split('/').pop(),path:'Dropbox'+path,dbxPath:path,
-      read:async function(){var r=await dbxCall('content','files/download',{path:path},undefined,true);var meta={};try{meta=JSON.parse(r.headers.get('Dropbox-API-Result')||'{}')}catch(e){}
-        var b=new Uint8Array(await r.arrayBuffer());if(b.length>50*1024*1024)throw new Error('That file is too big to be a stock list.');rev=meta.rev||null;if(!rev)rev=await f.stat();return {bytes:b,mtime:rev}},
+      read:async function(){
+        var r;try{r=await dbxCall('content','files/download',{path:path},undefined,true)}
+        catch(e){if(e&&e.code==='offline'){var c=cacheGet(path);if(c){f.offline=true;return {bytes:c,mtime:'offline'}}var ne2=new Error('No signal, and this phone has no copy of the spreadsheet yet. Open it once with signal.');ne2.code='offline';throw ne2}throw e}
+        f.offline=false;var meta={};try{meta=JSON.parse(r.headers.get('Dropbox-API-Result')||'{}')}catch(e){}
+        var b=new Uint8Array(await r.arrayBuffer());if(b.length>50*1024*1024)throw new Error('That file is too big to be a stock list.');rev=meta.rev||null;if(!rev)rev=await f.stat();cachePut(path,b);return {bytes:b,mtime:rev}},
       stat:async function(){var r=await dbxCall('api','files/get_metadata',{path:path});var m=await r.json();return m.rev},
-      write:async function(b){var r=await dbxCall('content','files/upload',{path:path,mode:rev?{'.tag':'update',update:rev}:{'.tag':'add'},autorename:false,mute:true},b,true);var m=await r.json();rev=m.rev},
-      backup:async function(bytes){
+      write:async function(b){if(f.offline){var oe=new Error('No signal.');oe.code='offline';throw oe}var r=await dbxCall('content','files/upload',{path:path,mode:rev?{'.tag':'update',update:rev}:{'.tag':'add'},autorename:false,mute:true},b,true);var m=await r.json();rev=m.rev;cachePut(path,b)},
+      backup:async function(bytes){if(f.offline){var oe=new Error('No signal.');oe.code='offline';throw oe}
         var d=new Date(),p2=function(n){return String(n).padStart(2,'0')},hh=d.getHours(),ap=hh>=12?'PM':'AM';hh=hh%12||12;
         var MO=['January','February','March','April','May','June','July','August','September','October','November','December'];
         var parts=path.split('/'),root=null;for(var i=parts.length-2;i>=1;i--){if(parts[i].toLowerCase()==='backups'){root=parts.slice(0,i+1).join('/');break}}
@@ -2683,7 +2712,7 @@ body.sheetview .prompts{position:static;max-height:none}
     F=file;rawList=[];await saveRaw();return file;
   }
   async function startWith(file){
-    F=file;
+    F=file;loadOutbox();
     try{await loadFresh()}catch(e){if(e&&e.code==='locked'){askUnlock();return}F=null;showSetup('That file could not be read: '+((e&&e.message)||'')+' Pick a different one, or make a new spreadsheet.');return}
     if(IS_NATIVE){try{localStorage.setItem('cactus-xl-path',file.path)}catch(e){}}else if(IS_DBX){try{localStorage.setItem('sp-dbx-path',file.dbxPath)}catch(e){}}else{await rememberFile(file.handle)}
     if(foreign()){askConvert();return}
@@ -2758,7 +2787,7 @@ body.sheetview .prompts{position:static;max-height:none}
       if(!F||busy||!$('unlock').hidden)return;
       var a=document.activeElement;if(a&&a.getAttribute&&a.getAttribute('data-f'))return;
       if(edit)return;
-      try{var m=await F.stat();if(m!==lastMtime){await loadFresh();publish();errMsg='';showSync();finishSheetEdits()}}catch(e){if(e&&e.code==='locked')askUnlock()}
+      try{var m=await F.stat();if(F.offline&&IS_DBX){F.offline=false;flushOutbox();return}if(m!==lastMtime){await loadFresh();publish();errMsg='';showSync();finishSheetEdits()}}catch(e){if(e&&e.code==='locked')askUnlock()}
     }
     setInterval(check,4000);window.addEventListener('focus',check);document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});
     window.__cactusCheck=check;
@@ -2834,5 +2863,6 @@ body.sheetview .prompts{position:static;max-height:none}
 })();
 </script>
 
+<script>if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){navigator.serviceWorker.register('sw.js').catch(function(){})}</script>
 </body>
 </html>
