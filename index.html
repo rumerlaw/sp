@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-oUI1LuLLfc47AC5YO4fueoN0QF/IDfmw9FT6ZgvPp/I=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-l8sMHGLE3x4avY+38ZdYI855py2upgAognnPcaOz+Do=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -398,9 +398,11 @@ body.sheetview .prompts{position:static;max-height:none}
 <div id="setup" class="wrap" hidden>
   <header class="top"><div><h1>SP Inventory</h1><p class="sub">Choose the spreadsheet this list lives in.</p></div></header>
   <section class="addbox" style="padding:14px">
-    <p style="font-size:15px">Pick the Excel file in your shared cloud folder (OneDrive, Google Drive, Dropbox or SharePoint, synced to this computer). Everyone who uses the app picks the same file.</p>
-    <p class="fine" style="margin-top:8px">First time ever? Tap “Make a new spreadsheet” and save it inside the shared cloud folder. Then everyone else taps “Open the shared spreadsheet” and picks it.</p>
+    <p style="font-size:15px" id="setup-intro">Pick the Excel file in your shared cloud folder (OneDrive, Google Drive, Dropbox or SharePoint, synced to this computer). Everyone who uses the app picks the same file.</p>
+    <p class="fine" id="setup-first" style="margin-top:8px">First time ever? Tap “Make a new spreadsheet” and save it inside the shared cloud folder. Then everyone else taps “Open the shared spreadsheet” and picks it.</p>
     <div class="row" style="margin-top:14px;flex-wrap:wrap"><button class="btn primary" type="button" id="f-open">Open the shared spreadsheet</button><button class="btn" type="button" id="f-new">Make a new spreadsheet</button><button class="btn" type="button" id="f-reconnect" hidden>Reconnect</button></div>
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="btn primary" type="button" id="dbx-connect" hidden>Connect Dropbox</button><button class="btn small" type="button" id="dbx-out" hidden>Disconnect Dropbox</button></div>
+    <div id="dbxpick" hidden style="margin-top:12px"></div>
     <p class="fine" id="setup-msg" style="margin-top:10px"></p>
   </section>
 </div>
@@ -1907,16 +1909,16 @@ body.sheetview .prompts{position:static;max-height:none}
   }
   async function saveRaw(){
     var bytes=await buildXlsx(rawToBy(rawList)),tries=0;
-    for(;;){try{await F.write(bytes);break}catch(e){if(++tries>=3)throw e;await new Promise(function(r){setTimeout(r,700)})}}
+    for(;;){try{await F.write(bytes);break}catch(e){if((e&&e.code==='conflict')||++tries>=3)throw e;await new Promise(function(r){setTimeout(r,700)})}}
     lastMtime=await F.stat();lastSaved=new Date();
   }
   /* Before the first change of a session, copy the spreadsheet to a "Backups" folder next to it,
      in Backups/<year-month>/, named "<Mon> <day> <time> backup.xlsx". Nothing changed = no backup. */
   var backedUpFor=null,sessionNew=true;
   async function backupOnce(){
-    if(!IS_NATIVE||!F||!F.path||backedUpFor===F.path||!fileFmt.hasContent)return;
+    if(!(IS_NATIVE||(F&&F.backup))||!F||!F.path||backedUpFor===F.path||!fileFmt.hasContent)return;
     /* a file that still has the old password is backed up without it, so the backup always opens */
-    try{lastBackup=await window.cactusNative.backup(F.path,wasEnc&&plainBytes?plainBytes:undefined);backedUpFor=F.path;backupErr='';showBackupInfo()}
+    try{lastBackup=F.backup?await F.backup(wasEnc&&plainBytes?plainBytes:undefined):await window.cactusNative.backup(F.path,wasEnc&&plainBytes?plainBytes:undefined);backedUpFor=F.path;backupErr='';showBackupInfo()}
     catch(e){backupErr=String(e&&e.message||e).replace(/^Error invoking remote method '[^']*': (Error: )?/,'');showBackupInfo();
       setTimeout(function(){say('Your change was saved, but the backup copy could not be made: '+backupErr,true)},50)}
   }
@@ -1925,11 +1927,14 @@ body.sheetview .prompts{position:static;max-height:none}
   function commit(fn){
     busy++;showSync();
     queue=queue.then(async function(){
-      await loadFresh();
-      if(foreign()){var fe=new Error('foreign');fe.code='foreign';throw fe}
-      if(fn()===false){publish();return}
-      await backupOnce();
-      await saveRaw();errMsg='';publish();
+      for(var att=0;;att++){
+        await loadFresh();
+        if(foreign()){var fe=new Error('foreign');fe.code='foreign';throw fe}
+        if(fn()===false){publish();return}
+        await backupOnce();
+        try{await saveRaw();break}catch(se){if(se&&se.code==='conflict'&&att<3)continue;throw se}
+      }
+      errMsg='';publish();
     }).catch(function(e){fail(e);return e&&e.code==='locked'?null:loadFresh().then(publish).catch(function(){})}).then(function(){busy--;showSync()});
     return queue;
   }
@@ -2554,11 +2559,105 @@ body.sheetview .prompts{position:static;max-height:none}
     read:async function(){var r=await window.cactusNative.read(p);return {bytes:new Uint8Array(r.bytes),mtime:r.mtime}},
     write:function(b){return window.cactusNative.write(p,b)},
     stat:function(){return window.cactusNative.stat(p)}}}
+
+  /* ---------- phone / web version: the spreadsheet is opened and saved straight in Dropbox ---------- */
+  var DBXC=window.SP_DROPBOX||null,IS_DBX=!!DBXC&&!IS_NATIVE,dbxTok=null,dbxExp=0;
+  function b64u(buf){var s='',b=new Uint8Array(buf);for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+  function rnd(n){var a=new Uint8Array(n);crypto.getRandomValues(a);return b64u(a)}
+  function argJson(o){return JSON.stringify(o).replace(/[\u007f-￿]/g,function(c){return '\\u'+('000'+c.charCodeAt(0).toString(16)).slice(-4)})}
+  async function dbxLogin(){
+    var ver=rnd(48),ch=b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ver))),st=rnd(16);
+    try{sessionStorage.setItem('sp-dbx-ver',ver);sessionStorage.setItem('sp-dbx-state',st)}catch(e){}
+    location.href='https://www.dropbox.com/oauth2/authorize?client_id='+encodeURIComponent(DBXC.key)+'&response_type=code&code_challenge='+ch+'&code_challenge_method=S256&token_access_type=offline&redirect_uri='+encodeURIComponent(DBXC.redirect)+'&state='+st;
+  }
+  async function dbxTokenCall(body){
+    var r=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body).toString()});
+    if(!r.ok)throw new Error('Dropbox sign-in did not work. Tap “Connect Dropbox” again.');
+    return r.json();
+  }
+  async function dbxFinishLogin(){
+    var q=new URLSearchParams(location.search),code=q.get('code');if(!code)return false;
+    var ver=null,st=null;try{ver=sessionStorage.getItem('sp-dbx-ver');st=sessionStorage.getItem('sp-dbx-state')}catch(e){}
+    history.replaceState(null,'',location.pathname);
+    if(!ver||q.get('state')!==st)throw new Error('Dropbox sign-in did not finish. Tap “Connect Dropbox” again.');
+    var j=await dbxTokenCall({code:code,grant_type:'authorization_code',code_verifier:ver,client_id:DBXC.key,redirect_uri:DBXC.redirect});
+    if(j.refresh_token){try{localStorage.setItem('sp-dbx-rt',j.refresh_token)}catch(e){}}
+    dbxTok=j.access_token;dbxExp=Date.now()+((j.expires_in||14400)-120)*1000;return true;
+  }
+  function dbxLinked(){try{return !!localStorage.getItem('sp-dbx-rt')}catch(e){return false}}
+  async function dbxToken(force){
+    if(dbxTok&&!force&&Date.now()<dbxExp)return dbxTok;
+    var rt=null;try{rt=localStorage.getItem('sp-dbx-rt')}catch(e){}
+    if(!rt){var ne=new Error('Connect Dropbox first.');ne.code='nologin';throw ne}
+    var j=await dbxTokenCall({grant_type:'refresh_token',refresh_token:rt,client_id:DBXC.key});
+    dbxTok=j.access_token;dbxExp=Date.now()+((j.expires_in||14400)-120)*1000;return dbxTok;
+  }
+  async function dbxCall(host,endpoint,arg,body,isContent){
+    for(var tries=0;tries<2;tries++){
+      var tok=await dbxToken(tries>0),h={Authorization:'Bearer '+tok};
+      var opt={method:'POST',headers:h};
+      if(isContent){h['Dropbox-API-Arg']=argJson(arg);if(body!==undefined){h['Content-Type']='application/octet-stream';opt.body=body}}
+      else{h['Content-Type']='application/json';opt.body=JSON.stringify(arg)}
+      var r=await fetch('https://'+host+'.dropboxapi.com/2/'+endpoint,opt);
+      if(r.status===401&&tries===0)continue;
+      if(!r.ok){var t='';try{t=await r.text()}catch(e){}var er=new Error(/conflict/.test(t)?'conflict':(/not_found/.test(t)?'That file is not in Dropbox any more.':'Dropbox said no ('+r.status+').'));if(/conflict/.test(t))er.code='conflict';if(/not_found/.test(t))er.code='notfound';throw er}
+      return r;
+    }
+  }
+  function dbxFile(path,name){
+    var rev=null,f={name:name||path.split('/').pop(),path:'Dropbox'+path,dbxPath:path,
+      read:async function(){var r=await dbxCall('content','files/download',{path:path},undefined,true);var meta={};try{meta=JSON.parse(r.headers.get('Dropbox-API-Result')||'{}')}catch(e){}
+        var b=new Uint8Array(await r.arrayBuffer());if(b.length>50*1024*1024)throw new Error('That file is too big to be a stock list.');rev=meta.rev||null;if(!rev)rev=await f.stat();return {bytes:b,mtime:rev}},
+      stat:async function(){var r=await dbxCall('api','files/get_metadata',{path:path});var m=await r.json();return m.rev},
+      write:async function(b){var r=await dbxCall('content','files/upload',{path:path,mode:rev?{'.tag':'update',update:rev}:{'.tag':'add'},autorename:false,mute:true},b,true);var m=await r.json();rev=m.rev},
+      backup:async function(bytes){
+        var d=new Date(),p2=function(n){return String(n).padStart(2,'0')},hh=d.getHours(),ap=hh>=12?'PM':'AM';hh=hh%12||12;
+        var MO=['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var parts=path.split('/'),root=null;for(var i=parts.length-2;i>=1;i--){if(parts[i].toLowerCase()==='backups'){root=parts.slice(0,i+1).join('/');break}}
+        if(!root)root=parts.slice(0,-1).join('/')+'/Backups';
+        var month=d.getFullYear()+'-'+p2(d.getMonth()+1)+' '+MO[d.getMonth()],nm=MO[d.getMonth()].slice(0,3)+' '+p2(d.getDate())+' '+hh+'-'+p2(d.getMinutes())+' '+ap+' backup.xlsx',to=root+'/'+month+'/'+nm;
+        var r=bytes?await dbxCall('content','files/upload',{path:to,mode:{'.tag':'add'},autorename:true,mute:true},bytes,true):await dbxCall('api','files/copy_v2',{from_path:path,to_path:to,autorename:true});
+        var j=await r.json();var md=j.metadata||j;return month+'/'+(md.name||nm);
+      }};
+    return f;
+  }
+  /* a small Dropbox file browser for picking the spreadsheet */
+  var dbxDir='';
+  async function dbxBrowse(dir){
+    dbxDir=dir;var box=$('dbxpick');box.hidden=false;box.innerHTML='<p class="fine">Loading your Dropbox…</p>';
+    try{
+      var r=await dbxCall('api','files/list_folder',{path:dir,limit:2000});var j=await r.json(),ents=j.entries||[];
+      while(j.has_more){r=await dbxCall('api','files/list_folder/continue',{cursor:j.cursor});j=await r.json();ents=ents.concat(j.entries||[])}
+      ents.sort(function(a,b){return (a['.tag']===b['.tag']?0:(a['.tag']==='folder'?-1:1))||a.name.localeCompare(b.name)});
+      var up=dir?'<button class="btn small" type="button" data-dbx-dir="'+h(dir.split('/').slice(0,-1).join('/'))+'">‹ Back</button>':'';
+      var rows=ents.filter(function(e){return e['.tag']==='folder'||/\.xlsx$/i.test(e.name)}).map(function(e){
+        return e['.tag']==='folder'?'<button class="btn dbxrow" type="button" data-dbx-dir="'+h(e.path_lower)+'">📁 '+h(e.name)+'</button>':'<button class="btn dbxrow primary" type="button" data-dbx-file="'+h(e.path_display||e.path_lower)+'">📄 '+h(e.name)+'</button>'}).join('');
+      box.innerHTML='<p><strong>'+h(dir?('Dropbox'+dir):'Dropbox')+'</strong></p><div class="dbxlist">'+up+(rows||'<p class="fine">No folders or spreadsheets here.</p>')+'</div>'+
+        '<div class="row" style="margin-top:10px"><button class="btn" type="button" id="dbx-new">Make a new spreadsheet here</button></div>';
+    }catch(e){box.innerHTML='<p class="msg err">'+h(e.message||'Could not read your Dropbox.')+'</p>'}
+  }
+  document.addEventListener('click',async function(e){
+    var t=e.target.closest&&e.target.closest('[data-dbx-dir],[data-dbx-file],#dbx-new,#dbx-connect,#dbx-out');if(!t)return;
+    if(t.id==='dbx-connect'){dbxLogin();return}
+    if(t.id==='dbx-out'){try{localStorage.removeItem('sp-dbx-rt');localStorage.removeItem('sp-dbx-path')}catch(x){}dbxTok=null;location.reload();return}
+    if(t.hasAttribute('data-dbx-dir')){dbxBrowse(t.getAttribute('data-dbx-dir'));return}
+    if(t.hasAttribute('data-dbx-file')){var fp=t.getAttribute('data-dbx-file');$('dbxpick').hidden=true;await startWith(dbxFile(fp));return}
+    if(t.id==='dbx-new'){var nm=prompt('Name for the new spreadsheet','SP Inventory');if(!nm)return;nm=nm.replace(/[\\\/:*?"<>|]/g,'').trim();if(!nm)return;if(!/\.xlsx$/i.test(nm))nm+='.xlsx';
+      var nf=dbxFile(dbxDir+'/'+nm);F=nf;rawList=[];try{await saveRaw();$('dbxpick').hidden=true;await startWith(nf)}catch(x){alert(x.message)}}
+  });
   function showSetup(msg,reconnectName){
     $('setup').hidden=false;$('app').hidden=true;$('convert').hidden=true;
     $('setup-msg').textContent=msg||'';
     $('f-reconnect').hidden=!reconnectName;
     if(reconnectName)$('f-reconnect').textContent='Reconnect to “'+reconnectName+'”';
+    if(IS_DBX){
+      $('f-open').hidden=true;$('f-new').hidden=true;$('f-reconnect').hidden=true;$('setup-first').hidden=true;
+      if(!DBXC.key||DBXC.key==='APP_KEY_NEEDED'){$('dbx-connect').hidden=true;$('dbx-out').hidden=true;$('setup-intro').textContent='The phone version is almost ready. It just needs its Dropbox key, which is being set up.';return}
+      $('dbx-connect').hidden=dbxLinked();$('dbx-out').hidden=!dbxLinked();
+      $('setup-intro').textContent=dbxLinked()?'Pick your SP Inventory spreadsheet in your Dropbox. Everyone who uses the app uses the same file.':'Connect your Dropbox, then pick your SP Inventory spreadsheet.';
+      if(dbxLinked())dbxBrowse(dbxDir);
+      return;
+    }
     var ok=IS_NATIVE||typeof window.showOpenFilePicker==='function';
     $('f-open').disabled=!ok;$('f-new').disabled=!ok;
     if(!ok)$('setup-msg').textContent='This browser cannot save into a spreadsheet file. Open this page in Chrome or Edge on a computer, or use the downloaded desktop app.';
@@ -2577,7 +2676,7 @@ body.sheetview .prompts{position:static;max-height:none}
   async function startWith(file){
     F=file;
     try{await loadFresh()}catch(e){if(e&&e.code==='locked'){askUnlock();return}F=null;showSetup('That file could not be read: '+((e&&e.message)||'')+' Pick a different one, or make a new spreadsheet.');return}
-    if(IS_NATIVE){try{localStorage.setItem('cactus-xl-path',file.path)}catch(e){}}else{await rememberFile(file.handle)}
+    if(IS_NATIVE){try{localStorage.setItem('cactus-xl-path',file.path)}catch(e){}}else if(IS_DBX){try{localStorage.setItem('sp-dbx-path',file.dbxPath)}catch(e){}}else{await rememberFile(file.handle)}
     if(foreign()){askConvert();return}
     db=file;$('setup').hidden=true;$('app').hidden=false;
     $('sharebtn').hidden=false;$('fname').textContent=shortPath(file);$('sharebtn').title=(file.path||file.name)+' (click for file options)';showWhere();
@@ -2704,6 +2803,12 @@ body.sheetview .prompts{position:static;max-height:none}
     setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);return {status:'saved'};
   }};
   (async function(){
+    if(IS_DBX){
+      try{await dbxFinishLogin()}catch(e){showSetup(e.message);return}
+      var dp=null;try{dp=localStorage.getItem('sp-dbx-path')}catch(e){}
+      if(dbxLinked()&&dp){try{await startWith(dbxFile(dp));return}catch(e){}}
+      showSetup('');return;
+    }
     if(IS_NATIVE){
       var p=null;try{p=localStorage.getItem('cactus-xl-path')}catch(e){}
       if(p){var ex=await window.cactusNative.exists(p);if(ex){await startWith(nativeFile(p));return}}

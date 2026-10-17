@@ -2,6 +2,8 @@ name: Build desktop apps
 on:
   push:
     branches: [main]
+    # the phone version (docs/) is a web page; changing it does not need new desktop downloads
+    paths-ignore: ['docs/**']
   workflow_dispatch:
 
 permissions:
