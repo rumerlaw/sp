@@ -49,9 +49,9 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm audit signatures > "$RUNNER_TEMP/signatures.txt" 2>&1; echo "exit=$?" >> "$RUNNER_TEMP/signatures.txt"
+          npm audit signatures > "$RUNNER_TEMP/signatures.txt" 2>&1; rc=$?; echo "exit=$rc" >> "$RUNNER_TEMP/signatures.txt"
           cat "$RUNNER_TEMP/signatures.txt"
-          exit 0
+          exit $rc
       - run: npx electron-builder --publish never
       # Start the finished app once to prove it opens with all its safety locks on.
       - name: Test the finished app (open, add, sell, save, backup, reopen)
