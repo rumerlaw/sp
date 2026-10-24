@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-Df97RjmZm9ZJygidJK21P37UukOo2cEeAY/TzZQM5PU=' 'sha256-IS+Nz+JZI/Hzgs+tSI3YVwMRGaXauzsRfRU6amfJLKA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-GcGmwnbJyMLzh61NZXcqjEi2XUWLVQSWJlMPVZwdei8=' 'sha256-IS+Nz+JZI/Hzgs+tSI3YVwMRGaXauzsRfRU6amfJLKA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -819,7 +819,7 @@ body.sheetview .prompts{position:static;max-height:none}
   }
 
   function say(text,err){try{growSay()}catch(e){}var m=$('msg');m.textContent=text||'';m.className='msg'+(err?' err':'');if(text&&typeof undoGroup!=='undefined'&&undoGroup&&!undoing&&!redoing&&!/^(Undone|Redone)/.test(text)){if(!err)undoGroup.label=String(text);undoGroup=null}if(typeof syncUndo==='function')syncUndo()}
-  function needsReorder(it){return it.qty<=it.reorderAt&&!(it.onOrder>0)&&it.snoozedQty!==it.qty}
+  function needsReorder(it){return !isGone(it)&&it.qty<=it.reorderAt&&!(it.onOrder>0)&&it.snoozedQty!==it.qty}
   function qctl(it){
     var id=h(it.id),dis=canWrite?'':' disabled';
     return '<span class="qctl"><input class="qn" id="n-'+id+'" data-q="'+id+'" type="number" min="1" step="1" value="'+h(qtyDraft[it.id]||1)+'" aria-label="How many '+h(it.name)+'"'+dis+'>'+
@@ -849,7 +849,7 @@ body.sheetview .prompts{position:static;max-height:none}
   function visible(list){
     var s=query.toLowerCase().trim();if(!s)return list;
     var ck=catKey(s),isCat=!!ck&&knownCats().some(function(c){return catKey(c)===ck});
-    if(isCat&&cat!=='all'){var keep=items;items=allItems;list=sorted();items=keep}
+    if(isCat&&cat!=='all'){var keep=items;items=allItems.filter(function(i){return !isGone(i)});list=sorted();items=keep}
     return list.filter(function(it){return (isCat&&catKey(it.category)===ck)||(it.name+' '+it.genus+' '+(it.vendor||'')+' '+(it.category||'')).toLowerCase().indexOf(s)>=0});
   }
 
@@ -869,8 +869,11 @@ body.sheetview .prompts{position:static;max-height:none}
         '<p class="fine">“Yes, I’ll get some” marks it as on order right away. When they come in, tap “Order arrived” on the card or in the spreadsheet. “I have it” adds them to your stock right away. Nothing is sent to a supplier.</p></section>';
   }
   function inCat(i){return cat==='all'||catKey(i.category)===catKey(cat)}
+  /* none left but has sales: off the stock list (it is on the "Sold out" sheet); its sales stay in Profit from sales.
+     Buying more of it brings the same line back, with its sales history. */
+  function isGone(it){return it.qty<=0&&(it.soldQty||0)>0&&!(it.onOrder>0)&&!it.example}
   function applyCat(){
-    items=allItems.filter(inCat);
+    items=allItems.filter(function(i){return inCat(i)&&!isGone(i)});
   }
   function renderCats(){
     var cs=knownCats().sort(function(a,b){return collate.compare(a,b)});
@@ -915,13 +918,13 @@ body.sheetview .prompts{position:static;max-height:none}
     var list=sorted();
     var q=0,vc=0,vs=0,low=0;
     list.forEach(function(it){q+=it.qty;vc+=it.qty*it.cost;vs+=it.qty*it.price;if(it.qty<=it.reorderAt)low++});
-    $('sub').textContent=!loaded?'Loading…':allItems.length?(allItems.length+(allItems.length===1?' product':' products')+' in '+knownCats().length+(knownCats().length===1?' category':' categories')):'Nothing added yet';
+    var nLive=allItems.filter(function(i){return !isGone(i)}).length;$('sub').textContent=!loaded?'Loading…':allItems.length?(nLive+(nLive===1?' product':' products')+' in '+knownCats().length+(knownCats().length===1?' category':' categories')):'Nothing added yet';
     $('summary').innerHTML=
       stat('In stock'+(cat==='all'?'':' · '+cat),q.toLocaleString(),false)+
       stat('Value at cost',money(vc),false)+
       stat('Value at sale',money(vs),false)+
       stat('Running low',String(low),low>0);
-    $('sold').innerHTML=soldCard(list.slice());
+    $('sold').innerHTML=soldCard(allItems.filter(inCat));
     $('allt').innerHTML=allItems.length?allCard():'';
     var due=allItems.filter(needsReorder).sort(function(a,b){return collate.compare(fullName(a),fullName(b))});
     if(popupId){var pi=due.map(function(x){return x.id}).indexOf(popupId);if(pi>=0)promptIdx=pi}
@@ -1376,11 +1379,11 @@ body.sheetview .prompts{position:static;max-height:none}
       if(r.qty>it.qty&&sl.length>1&&r.qty<=tot){
         var left0=r.qty,stp=[],ln=[],run={};
         sl.sort(function(a,b){return a===it?-1:b===it?1:0});
-        sl.forEach(function(l){if(left0<=0)return;var u=Math.min(left0,l.qty);left0-=u;run[l.id]=l.qty-u;stp.push({kind:'sell',item:l,qty:u,after:l.qty-u,salePrice:salePrice});ln.push('Sold '+u+' '+lineLabel(l)+atTxt+'. Stock goes from '+l.qty+' to '+(l.qty-u)+'.')});
+        sl.forEach(function(l){if(left0<=0)return;var u=Math.min(left0,l.qty);left0-=u;run[l.id]=l.qty-u;stp.push({kind:'sell',item:l,qty:u,after:l.qty-u,salePrice:salePrice});ln.push('Sold '+u+' '+lineLabel(l)+atTxt+'. Stock goes from '+l.qty+' to '+(l.qty-u)+'.'+(l.qty-u<=0&&!(l.onOrder>0)?' That was the last one, so it comes off the stock list. The sale stays in Profit from sales.':''))});
         return {kind:'multi',steps:stp,lines:ln,touched:stp.map(function(x){return x.item}),run:run,summary:stp.map(function(x){return lineLabel(x.item)+' has '+x.after+' in stock'}).join(', '),text:ln.join(' ')};
       }
       if(r.qty>it.qty)return {error:'Only '+(sl.length>1?tot:it.qty)+' '+lineLabel(it)+' in stock, so '+r.qty+' cannot be sold.'};
-      return {kind:'sell',item:it,qty:r.qty,salePrice:salePrice,text:'Sold '+r.qty+' '+lineLabel(it)+atTxt+'. Stock goes from '+it.qty+' to '+(it.qty-r.qty)+'.'};
+      return {kind:'sell',item:it,qty:r.qty,salePrice:salePrice,text:'Sold '+r.qty+' '+lineLabel(it)+atTxt+'. Stock goes from '+it.qty+' to '+(it.qty-r.qty)+'.'+(it.qty-r.qty<=0&&!(it.onOrder>0)?' That was the last one, so it comes off the stock list. The sale stays in Profit from sales.':'')};
     }
     return addResult(r);
   }
@@ -1477,6 +1480,8 @@ body.sheetview .prompts{position:static;max-height:none}
   function sstXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+SST.count+'" uniqueCount="'+SST.list.length+'">'+SST.list.map(function(v){return '<si><t xml:space="preserve">'+xe(v)+'</t></si>'}).join('')+'</sst>'}
   function cNum(r,c,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+'><v>'+(isFinite(v)?v:0)+'</v></c>'}
   function cFor(r,c,f,v,st){return '<c r="'+colL(c)+r+'"'+(st?' s="'+st+'"':'')+'><f>'+xe(f)+'</f><v>'+(isFinite(v)?v:0)+'</v></c>'}
+  /* none left but has sales: off the stock list, onto the "Sold out" sheet, so the sales stay counted */
+  function soldOutRow(it){return it.qty<=0&&(it.soldQty||0)>0&&!(it.onOrder>0)&&!it.example}
   function sheetXml(list){
     var C=function(k){for(var i=0;i<COLS.length;i++)if(COLS[i][0]===k)return i;return 0};
     var rows='<row r="1" ht="30" customHeight="1">';
@@ -1515,12 +1520,12 @@ body.sheetview .prompts{position:static;max-height:none}
     ['Category','Lines','In stock','Value at cost','Value at sale','Profit if sold','Sold','Profit from sales'].forEach(function(t,i){rows+=cStr(3,i,t,1)});
     rows+='</row>';
     var by={},order=[];
-    list.forEach(function(it){var k=catKey(it.category||'Other')||'other';if(!by[k]){by[k]={label:String(it.category||'Other'),n:0,q:0,vc:0,vs:0,sq:0,pm:0};order.push(k)}var a=by[k];if(/^[a-z]/.test(a.label)&&/^[A-Z]/.test(String(it.category||'')))a.label=String(it.category);a.n++;a.q+=it.qty;a.vc+=it.qty*it.cost;a.vs+=it.qty*it.price;a.sq+=it.soldQty;a.pm+=it.soldRev-it.soldCost});
+    list.forEach(function(it){var k=catKey(it.category||'Other')||'other';if(!by[k]){by[k]={label:String(it.category||'Other'),n:0,q:0,vc:0,vs:0,sq:0,pm:0};order.push(k)}var a=by[k];if(/^[a-z]/.test(a.label)&&/^[A-Z]/.test(String(it.category||'')))a.label=String(it.category);if(!soldOutRow(it))a.n++;a.q+=it.qty;a.vc+=it.qty*it.cost;a.vs+=it.qty*it.price;a.sq+=it.soldQty;a.pm+=it.soldRev-it.soldCost});
     order.sort(function(a,b){return by[a].label.toLowerCase()<by[b].label.toLowerCase()?-1:1});
-    var S="'Stock'!",rng=function(L){return S+L+'2:'+L+'5000'},T={n:0,q:0,vc:0,vs:0,sq:0,pm:0};
+    var S="'Stock'!",rng=function(L){return S+L+'2:'+L+'5000'},rngO=function(L){return "'Sold out'!"+L+'2:'+L+'5000'},T={n:0,q:0,vc:0,vs:0,sq:0,pm:0};
     order.forEach(function(k,i){
       var r=4+i,a=by[k],key='$A'+r;
-      var cB=CL('category');rows+='<row r="'+r+'">'+cStr(r,0,a.label,0)+cFor(r,1,'COUNTIF('+rng(cB)+','+key+')',a.n,3)+cFor(r,2,'SUMIF('+rng(cB)+','+key+','+rng(CL('qty'))+')',a.q,3)+cFor(r,3,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vc'))+')',a.vc,2)+cFor(r,4,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vs'))+')',a.vs,2)+cFor(r,5,'E'+r+'-D'+r,a.vs-a.vc,2)+cFor(r,6,'SUMIF('+rng(cB)+','+key+','+rng(CL('soldQty'))+')',a.sq,3)+cFor(r,7,'SUMIF('+rng(cB)+','+key+','+rng(CL('_pm'))+')',a.pm,2)+'</row>';
+      var cB=CL('category');rows+='<row r="'+r+'">'+cStr(r,0,a.label,0)+cFor(r,1,'COUNTIF('+rng(cB)+','+key+')',a.n,3)+cFor(r,2,'SUMIF('+rng(cB)+','+key+','+rng(CL('qty'))+')',a.q,3)+cFor(r,3,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vc'))+')',a.vc,2)+cFor(r,4,'SUMIF('+rng(cB)+','+key+','+rng(CL('_vs'))+')',a.vs,2)+cFor(r,5,'E'+r+'-D'+r,a.vs-a.vc,2)+cFor(r,6,'SUMIF('+rng(cB)+','+key+','+rng(CL('soldQty'))+')+SUMIF('+rngO(cB)+','+key+','+rngO(CL('soldQty'))+')',a.sq,3)+cFor(r,7,'SUMIF('+rng(cB)+','+key+','+rng(CL('_pm'))+')+SUMIF('+rngO(cB)+','+key+','+rngO(CL('_pm'))+')',a.pm,2)+'</row>';
       ['n','q','vc','vs','sq','pm'].forEach(function(f){T[f]+=a[f]});
     });
     var tr=4+order.length,first=4,lastR=Math.max(4,tr-1);
@@ -1530,13 +1535,13 @@ body.sheetview .prompts{position:static;max-height:none}
   var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6B3A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top style="medium"/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="1" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/></cellXfs></styleSheet>';
   async function buildXlsx(by){
     var z=new JSZip();
-    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>');
+    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>');
     z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
-    z.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Stock" sheetId="1" r:id="rId1"/><sheet name="Summary" sheetId="2" r:id="rId2"/><sheet name="Shortcuts" sheetId="3" r:id="rId3"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
-    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
+    z.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Stock" sheetId="1" r:id="rId1"/><sheet name="Summary" sheetId="2" r:id="rId2"/><sheet name="Sold out" sheetId="4" r:id="rId6"/><sheet name="Shortcuts" sheetId="3" r:id="rId3"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
+    z.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
     z.file('xl/styles.xml',STYLES);
     SST={list:[],idx:Object.create(null),count:0};
-    try{z.file('xl/worksheets/sheet1.xml',sheetXml(by));z.file('xl/worksheets/sheet2.xml',sumXml(by));z.file('xl/worksheets/sheet3.xml',shortXml());z.file('xl/sharedStrings.xml',sstXml())}finally{SST=null}
+    try{z.file('xl/worksheets/sheet1.xml',sheetXml(by.filter(function(i){return !soldOutRow(i)})));z.file('xl/worksheets/sheet4.xml',sheetXml(by.filter(soldOutRow)));z.file('xl/worksheets/sheet2.xml',sumXml(by));z.file('xl/worksheets/sheet3.xml',shortXml());z.file('xl/sharedStrings.xml',sstXml())}finally{SST=null}
     return z.generateAsync({type:'uint8array',compression:'DEFLATE'});
   }
   function parseXml(t){return new DOMParser().parseFromString(t,'application/xml')}
@@ -2110,7 +2115,7 @@ body.sheetview .prompts{position:static;max-height:none}
       if(ok){
         var warn=left<=p.item.reorderAt&&!(p.item.onOrder>0);
         var pn1='';
-        say('Saved. '+lineLabel(p.item)+(p.salePrice!=null?' sold at '+money(p.salePrice)+' each':'')+', down to '+left+'.'+pn1+(warn?' See the reorder question above.':''));
+        say('Saved. '+lineLabel(p.item)+(p.salePrice!=null?' sold at '+money(p.salePrice)+' each':'')+', down to '+left+'.'+pn1+(left<=0&&!(p.item.onOrder>0)?' That was the last one, so it is off the stock list. The sale stays in Profit from sales.':(warn?' See the reorder question above.':'')));
         if(warn){popupId=p.item.id;render()}
       }
     }else if(p.kind==='restock'){
