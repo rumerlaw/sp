@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-GcGmwnbJyMLzh61NZXcqjEi2XUWLVQSWJlMPVZwdei8=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-v92OTn2W1je6EBQj+VgqPZyFXf89FpjTuBrwJoHYISI=' 'sha256-ZLFSxtBiaIOLuoXHne28YY+Tic4fBsNukLKdNPvZS/s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -465,7 +465,7 @@ body.sheetview .prompts{position:static;max-height:none}
         <label class="f">Cost each ($)<input id="a-cost" type="number" min="0" step="any" placeholder="6.00"></label>
         <label class="f">Sell price ($)<input id="a-price" type="number" min="0" step="any" placeholder="15.00"></label>
         <label class="f">How many<input id="a-qty" type="number" min="0" step="1" placeholder="20"></label>
-        <label class="f">Remind me at<input id="a-ra" type="number" min="0" step="1" value="1"></label>
+        <input id="a-ra" type="hidden" value="1">
         <div class="row wide"><button class="btn primary" type="submit">Add it</button></div>
       </form>
     </details>
@@ -815,7 +815,8 @@ body.sheetview .prompts{position:static;max-height:none}
   }
 
   function say(text,err){try{growSay()}catch(e){}var m=$('msg');m.textContent=text||'';m.className='msg'+(err?' err':'');if(text&&typeof undoGroup!=='undefined'&&undoGroup&&!undoing&&!redoing&&!/^(Undone|Redone)/.test(text)){if(!err)undoGroup.label=String(text);undoGroup=null}if(typeof syncUndo==='function')syncUndo()}
-  function needsReorder(it){return !isGone(it)&&it.qty<=it.reorderAt&&!(it.onOrder>0)&&it.snoozedQty!==it.qty}
+  /* reorder reminders are switched off */
+  function needsReorder(it){return false&&!isGone(it)&&it.qty<=it.reorderAt&&!(it.onOrder>0)&&it.snoozedQty!==it.qty}
   function qctl(it){
     var id=h(it.id),dis=canWrite?'':' disabled';
     return '<span class="qctl"><input class="qn" id="n-'+id+'" data-q="'+id+'" type="number" min="1" step="1" value="'+h(qtyDraft[it.id]||1)+'" aria-label="How many '+h(it.name)+'"'+dis+'>'+
@@ -918,8 +919,7 @@ body.sheetview .prompts{position:static;max-height:none}
     $('summary').innerHTML=
       stat('In stock'+(cat==='all'?'':' · '+cat),q.toLocaleString(),false)+
       stat('Value at cost',money(vc),false)+
-      stat('Value at sale',money(vs),false)+
-      stat('Running low',String(low),low>0);
+      stat('Value at sale',money(vs),false);
     $('sold').innerHTML=soldCard(allItems.filter(inCat));
     $('allt').innerHTML=allItems.length?allCard():'';
     var due=allItems.filter(needsReorder).sort(function(a,b){return collate.compare(fullName(a),fullName(b))});
@@ -1036,15 +1036,15 @@ body.sheetview .prompts{position:static;max-height:none}
       var c=calc(it),id=h(it.id);
       function inp(f,t){if(hideF[f])return '<span class="hidcell" data-hide="'+f+'" title="Tap to show">•••</span>';return '<input data-f="'+f+'" data-id="'+id+'" type="'+t+'"'+(t==='number'?' min="0" step="any"':'')+' value="'+h(it[f])+'" aria-label="'+f+' for '+h(it.name)+'"'+ro+'>'}
       return '<tr data-row="'+id+'"><td class="c1">'+inp('name','text')+'</td><td class="c3">'+inp('category','text')+'</td><td class="c2">'+inp('genus','text')+'</td><td class="c2">'+inp('vendor','text')+'</td>'+
-        '<td>'+inp('cost','number')+'</td><td>'+inp('price','number')+'</td><td>'+inp('qty','number')+'</td><td>'+inp('reorderAt','number')+'</td>'+
+        '<td>'+inp('cost','number')+'</td><td>'+inp('price','number')+'</td><td>'+inp('qty','number')+'</td>'+
         '<td class="n" data-calc="vc">'+hv('vc',money(c.vc))+'</td><td class="n" data-calc="vs">'+hv('vs',money(c.vs))+'</td><td class="n" data-calc="pf">'+hv('pf',money(c.pf))+'</td>'+
         '<td class="act">'+qctl(it)+'<span data-calc="ob">'+orderHtml(it)+'</span><span data-calc="dl">'+delHtml(it)+'</span></td></tr>';
     }).join('');
     var t=totals(vis);
     return '<div class="sheetwrap"><table class="sheet" data-key="'+h(key)+'"><thead><tr>'+
-      '<th class="c1">Name</th>'+th('category','Category','')+th('genus','Genus / type','')+''+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+th('reorderAt','Remind at','n')+
+      '<th class="c1">Name</th>'+th('category','Category','')+th('genus','Genus / type','')+''+th('vendor','Vendor','')+th('cost','Cost ($)','n')+th('price','Sell price ($)','n')+th('qty','In stock','n')+
       th('vc','Value at cost','n')+th('vs','Value at sale','n')+th('pf','Profit if sold','n')+'<th>Sold / add</th></tr></thead>'+
-      '<tbody>'+rows+'</tbody><tfoot><tr><td class="c1">Total shown</td><td colspan="5"></td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td><td></td>'+
+      '<tbody>'+rows+'</tbody><tfoot><tr><td class="c1">Total shown</td><td colspan="5"></td><td class="n" data-total="qty">'+hv('qty',t.qty)+'</td>'+
       '<td class="n" data-total="vc">'+hv('vc',money(t.vc))+'</td><td class="n" data-total="vs">'+hv('vs',money(t.vs))+'</td><td class="n" data-total="pf">'+hv('pf',money(t.pf))+'</td><td></td></tr></tfoot></table></div>';
   }
   function delHtml(it){
@@ -1084,7 +1084,7 @@ body.sheetview .prompts{position:static;max-height:none}
 
   /* card view */
   function itemHtml(it,group){
-    var id=h(it.id),low=it.qty<=it.reorderAt;
+    var id=h(it.id),low=false;
     var badges=(it.example?'<span class="eg">example</span>':'')+
       (it.qty===0?'<span class="badge low">Sold out</span>':low?'<span class="badge low">Low</span>':'')+
       (it.onOrder>0?'<span class="badge order">'+(it.onOrderHow==='inperson'?'Getting in person: ':'On order: ')+it.onOrder+'</span>':'');
@@ -1099,8 +1099,7 @@ body.sheetview .prompts{position:static;max-height:none}
       ed='<div class="edit">'+
         field('name','Name',d.name,'text','wide')+field('category','Category',d.category,'text')+field('genus','Genus / type',d.genus,'text')+field('vendor','Vendor (who you bought it from)',d.vendor,'text','wide')+
         field('cost','Cost each ($)',d.cost,'number')+field('price','Sell price ($)',d.price,'number')+
-        field('qty','In stock',d.qty,'number')+field('reorderAt','Remind me at',d.reorderAt,'number')+
-        field('reorderQty','Usual reorder',d.reorderQty,'number')+
+        field('qty','In stock',d.qty,'number')+
         '<div class="row wide"><button class="btn primary small" data-act="save" data-id="'+id+'">Save</button>'+
         '<button class="btn small" data-act="cancel">Cancel</button>'+
         (delAsk===it.id?'<span class="fine">Delete for good?</span><button class="btn bloom small" data-act="del" data-id="'+id+'">Yes, delete</button><button class="btn small" data-act="delno">Keep</button>':
@@ -1117,8 +1116,7 @@ body.sheetview .prompts{position:static;max-height:none}
       '<div class="meta">'+(it.genus?'<span class="genus'+(hideF.genus?' off':'')+'" data-hide="genus" title="Tap to hide or show">'+(hideF.genus?'•••':h(it.genus))+'</span>':'')+'<span class="ctag'+(hideF.category?' off':'')+'" data-hide="category" title="Tap to hide or show">'+(hideF.category?'•••':h(it.category))+'</span></div></div>'+
       '<div class="qty'+(hideF.qty?' off':'')+'" data-hide="qty" title="Tap to hide or show">'+(hideF.qty?'•••':it.qty)+'<small>in stock</small>'+tot+'</div>'+lines+
       '<div class="money">'+chip('cost','Cost',money(it.cost))+(it.vendor?chip('vendor','From',h(it.vendor)):'')+
-        (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit if sold',money(it.qty*(it.price-it.cost))))+
-        chip('reorderAt','Remind at',String(Math.max(0,it.reorderAt)))+'</div>'+
+        (it.bundled?'<span class="chipt">Sold with plants</span>':chip('price','Sells',money(it.price))+chip('vs','Worth',money(it.qty*it.price))+chip('pf','Profit if sold',money(it.qty*(it.price-it.cost))))+'</div>'+
       '<div class="acts">'+acts+'</div>'+ed+'</article>';
   }
   function field(k,l,v,t,cls){
@@ -1503,7 +1501,7 @@ body.sheetview .prompts{position:static;max-height:none}
       else tot+='<c r="'+colL(ci)+tr+'" s="8"/>';}
     rows+=tot+'</row>';
     var widths=[28,14,20,22,11,11,10,10,12,11,14,13,13,13,12,12,10,18,10,10,9,10,10];
-    var cols='<cols>'+widths.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"'+(i>=NVIS?' hidden="1"':'')+'/>'}).join('')+'</cols>';
+    var cols='<cols>'+widths.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"'+(i>=NVIS||COLS[i][0]==='reorderAt'||COLS[i][0]==='reorderQty'?' hidden="1"':'')+'/>'}).join('')+'</cols>';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+rows+'</sheetData><autoFilter ref="A1:'+colL(NVIS-1)+last+'"/></worksheet>';
   }
   function shortXml(){
@@ -2109,7 +2107,7 @@ body.sheetview .prompts{position:static;max-height:none}
       var left=p.item.qty-p.qty;
       var ok=await guard(function(){return ref(p.item.id).update(Object.assign({qty:left,snoozedQty:null},soldFields(p.item,p.qty,p.salePrice)))});
       if(ok){
-        var warn=left<=p.item.reorderAt&&!(p.item.onOrder>0);
+        var warn=false;
         var pn1='';
         say('Saved. '+lineLabel(p.item)+(p.salePrice!=null?' sold at '+money(p.salePrice)+' each':'')+', down to '+left+'.'+pn1+(left<=0&&!(p.item.onOrder>0)?' That was the last one, so it is off the stock list. The sale stays in Profit from sales.':(warn?' See the reorder question above.':'')));
         if(warn){popupId=p.item.id;render()}
@@ -2133,7 +2131,7 @@ body.sheetview .prompts{position:static;max-height:none}
         }
       }
       if(okAll){
-        var lowAfter=p.touched.some(function(x){return p.run[x.id]<=x.reorderAt&&!(x.onOrder>0)});
+        var lowAfter=false&&p.touched.some(function(x){return p.run[x.id]<=x.reorderAt&&!(x.onOrder>0)});
         say('Saved. '+p.summary+'.'+potNotes+(lowAfter?' See the reorder question above.':''));
         if(lowAfter){var lw=p.touched.filter(function(x){return p.run[x.id]<=x.reorderAt&&!(x.onOrder>0)})[0];if(lw){popupId=lw.id;render()}}
       }
@@ -2462,7 +2460,7 @@ body.sheetview .prompts{position:static;max-height:none}
         var left=it.qty-n;
         if(await guard(function(){return ref(id).update(Object.assign({qty:left,snoozedQty:null},soldFields(it,n)))})){
           delete qtyDraft[id];
-          var warn=left<=it.reorderAt&&!(it.onOrder>0);
+          var warn=false;
           var pn2='';
           say('Sold '+n+' '+fullName(it)+'. '+left+' left.'+pn2+(warn?' See the reorder question above.':''));
           if(warn){popupId=id;render()}
@@ -2524,7 +2522,7 @@ body.sheetview .prompts{position:static;max-height:none}
       '<div class="cs"><h4>Add, the quickest way</h4>'+ex('1 trich 5 20')+'<ul><li>how many → <b>1</b></li><li>name → <b>trich</b> (Trichocereus)</li><li>paid each → <b>$5</b></li><li>sell price each → <b>$20</b></li></ul>'+
         '<h4>Add many at once</h4><ul><li>one per line: press <b>Shift + Enter</b> for a new line</li><li>or put <b>;</b> between them: '+ex('1 trich 5 20; 2 h cooperi 6 15')+'</li><li>or paste a whole list</li><li>then press <b>Enter</b> to save them all</li></ul>'+
         '<h4>Lists work too</h4>'+ex('Dioscorea elephantides x 4  $5.00  will sell for $10')+'<ul><li><b>x 4</b> how many · <b>$5.00</b> paid each · <b>$10</b> sell price each</li></ul>'+ex('Dioscorea elephantides x 4 x 5 x $10')+'<ul><li>name x how many x paid each x sell price each</li></ul></div>'+
-      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<ul><li>or quicker: '+ex('-2 golden')+'</li><li>two lines at different costs? add what it cost: '+ex('-2 golden 5')+'</li></ul>'+'<h4>Change</h4>'+ex('set tephrocactus to 12')+'<ul><li>that changes the sell price</li><li>cost: '+ex('tephrocactus cost 6')+'</li><li>stock: '+ex('tephrocactus stock 4')+'</li></ul>'+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
+      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<ul><li>or quicker: '+ex('-2 golden')+'</li><li>sold for a different price? add it: '+ex('-2 golden 15')+'</li><li>two lines at different costs? '+ex('-2 golden cost 5')+'</li></ul>'+'<h4>Change</h4>'+ex('set tephrocactus to 12')+'<ul><li>that changes the sell price</li><li>cost: '+ex('tephrocactus cost 6')+'</li><li>stock: '+ex('tephrocactus stock 4')+'</li></ul>'+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
       '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: type '+ex('pk means pachypodium')+' in the box and press <b>Enter</b></li><li>remove one: '+ex('delete shortcut pk')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
       '</div><p class="fine" style="margin-top:6px">Press <b>Enter</b> to save. Typos are fine.</p></details>';
   }
