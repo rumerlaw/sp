@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-In5uoJNPyeh5rnkWfCM2Ki/92ZanROKxqJ3AqDrlFbw=' 'sha256-IS+Nz+JZI/Hzgs+tSI3YVwMRGaXauzsRfRU6amfJLKA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fjuLEfRPiNz8M7/+Wo1Q9WpwvQiiEWt79lsgs+/IRno=' 'sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=' 'sha256-Df97RjmZm9ZJygidJK21P37UukOo2cEeAY/TzZQM5PU=' 'sha256-IS+Nz+JZI/Hzgs+tSI3YVwMRGaXauzsRfRU6amfJLKA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050806">
 <title>SP Inventory</title>
@@ -977,7 +977,7 @@ body.sheetview .prompts{position:static;max-height:none}
   function stat(k,v,alert){var hk='s:'+k;return '<div class="stat'+(alert?' alert':'')+(hideF[hk]?' off':'')+'" data-hide="'+h(hk)+'" title="Tap to hide or show"><div class="k">'+k+'</div><div class="v">'+(hideF[hk]?'•••':h(v))+'</div></div>'}
 
   /* spreadsheet view: cells you can type in, with the sums worked out for you */
-  function soldFields(it,n){return {soldQty:(it.soldQty||0)+n,soldRev:(it.soldRev||0)+n*it.price,soldCost:(it.soldCost||0)+n*it.cost}}
+  function soldFields(it,n,price){var pr=(price!=null&&isFinite(price))?price:it.price;return {soldQty:(it.soldQty||0)+n,soldRev:(it.soldRev||0)+n*pr,soldCost:(it.soldCost||0)+n*it.cost}}
   var soldOpen=false;
   var soldEdit=false;
   document.addEventListener('click',function(e){if(e.target&&e.target.id==='soldfix'){soldEdit=!soldEdit;soldOpen=true;render()}});
@@ -1138,6 +1138,12 @@ body.sheetview .prompts{position:static;max-height:none}
     var m=t.match(new RegExp('^(?:set|change|update|make)\\s+(?:the\\s+)?'+FIELD_RE+'\\s+(?:of|for|on)\\s+(.+?)\\s+(?:to|at)\\s+\\$?(\\d+(?:\\.\\d+)?)$','i'));
     if(m)return {action:'set',field:fieldKey(m[1]),name:m[2].trim(),value:parseFloat(m[3])};
     m=t.match(new RegExp('^(?:set|change|update|make)\\s+(?:the\\s+)?(.+?)\\s+'+FIELD_RE+'\\s+(?:to|at)\\s+\\$?(\\d+(?:\\.\\d+)?)$','i'));
+    if(m)return {action:'set',field:fieldKey(m[2]),name:m[1].trim(),value:parseFloat(m[3])};
+    /* "set tephrocactus to 12" = the sell price */
+    m=t.match(/^(?:set|change|update|make)\s+(?:the\s+)?(.+?)\s+(?:to|at|=)\s*\$?(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?|each)?$/i);
+    if(m&&!/\d/.test(m[1]))return {action:'set',field:'price',name:m[1].trim(),value:parseFloat(m[2])};
+    /* "tephrocactus price 12", "tephrocactus cost 6", "tephrocactus price is 12" */
+    m=t.match(new RegExp('^(?!sold\\b|sell\\b|bought\\b|got\\b|add\\b|delete\\b|remove\\b)([a-z][a-z\' .-]*?)\\s+'+FIELD_RE+'\\s*(?:to|at|=|is|of)?\\s*\\$?(\\d+(?:\\.\\d+)?)$','i'));
     if(m)return {action:'set',field:fieldKey(m[2]),name:m[1].trim(),value:parseFloat(m[3])};
     m=t.match(/^(?:i\s+)?(?:just\s+)?(?:sold|sell)\s+(\w+)\s+(?:of\s+)?(.+)$/i);
     if(m&&!isNaN(qtyOf(m[1])))return {action:'sell',qty:qtyOf(m[1]),name:m[2].replace(/\s+(?:that\s+|which\s+)?(?:cost|costs|paid)\s*\$?\s*\d+(?:\.\d+)?\s*(?:each)?\s*$/i,'').trim()};
@@ -1353,20 +1359,28 @@ body.sheetview .prompts{position:static;max-height:none}
     if(r.action==='sell'){
       if(!it)return {error:'I could not find a plant called “'+r.name+'”. Add it first, for example “add 10 '+r.name+'”.'};
       var all0=sameLines(it),sl=all0.filter(function(i){return i.qty>0});
+      var hint=lineHint(r.hintText,r.vendor),salePrice=(!hint.costFirst&&hint.num!=null)?hint.num:null;
       if(all0.length>1){
-        var hint=lineHint(r.hintText,r.vendor),ch=chooseLines(all0,hint);
-        if(ch.none)return {error:'I could not find that '+fullName(it)+' line. '+whichMsg(it.name,all0)};
-        if(hint.num!=null||hint.vendor){sl=ch.lines.filter(function(i){return i.qty>0});if(!sl.length)return {error:lineLabel(ch.lines[0])+' is sold out.'};it=sl[0]}
+        if(hint.costFirst||hint.vendor){
+          var ch=chooseLines(all0,{num:hint.costFirst?hint.num:null,vendor:hint.vendor,costFirst:hint.costFirst});
+          if(ch.none)return {error:'I could not find that '+fullName(it)+' line. '+whichMsg(it.name,all0)};
+          sl=ch.lines.filter(function(i){return i.qty>0});if(!sl.length)return {error:lineLabel(ch.lines[0])+' is sold out.'};it=sl[0];
+        }else if(salePrice!=null){
+          var pl=all0.filter(function(l){return !l.bundled&&Math.abs(l.price-salePrice)<0.005&&l.qty>0});
+          if(pl.length){sl=pl;it=pl[0]}else if(sl.length){it=sl[0]}
+        }
       }
+      if(salePrice!=null&&Math.abs(salePrice-it.price)<0.005)salePrice=null;
+      var atTxt=salePrice!=null?' at '+money(salePrice)+' each':'';
       var tot=sl.reduce(function(a,i){return a+i.qty},0);
       if(r.qty>it.qty&&sl.length>1&&r.qty<=tot){
         var left0=r.qty,stp=[],ln=[],run={};
         sl.sort(function(a,b){return a===it?-1:b===it?1:0});
-        sl.forEach(function(l){if(left0<=0)return;var u=Math.min(left0,l.qty);left0-=u;run[l.id]=l.qty-u;stp.push({kind:'sell',item:l,qty:u,after:l.qty-u});ln.push('Sold '+u+' '+lineLabel(l)+'. Stock goes from '+l.qty+' to '+(l.qty-u)+'.')});
+        sl.forEach(function(l){if(left0<=0)return;var u=Math.min(left0,l.qty);left0-=u;run[l.id]=l.qty-u;stp.push({kind:'sell',item:l,qty:u,after:l.qty-u,salePrice:salePrice});ln.push('Sold '+u+' '+lineLabel(l)+atTxt+'. Stock goes from '+l.qty+' to '+(l.qty-u)+'.')});
         return {kind:'multi',steps:stp,lines:ln,touched:stp.map(function(x){return x.item}),run:run,summary:stp.map(function(x){return lineLabel(x.item)+' has '+x.after+' in stock'}).join(', '),text:ln.join(' ')};
       }
       if(r.qty>it.qty)return {error:'Only '+(sl.length>1?tot:it.qty)+' '+lineLabel(it)+' in stock, so '+r.qty+' cannot be sold.'};
-      return {kind:'sell',item:it,qty:r.qty,text:'Sold '+r.qty+' '+lineLabel(it)+'. Stock goes from '+it.qty+' to '+(it.qty-r.qty)+'.'};
+      return {kind:'sell',item:it,qty:r.qty,salePrice:salePrice,text:'Sold '+r.qty+' '+lineLabel(it)+atTxt+'. Stock goes from '+it.qty+' to '+(it.qty-r.qty)+'.'};
     }
     return addResult(r);
   }
@@ -2092,11 +2106,11 @@ body.sheetview .prompts{position:static;max-height:none}
       if(await guard(function(){return ref(p.item.id).update(pt)}))say(inp0?('Saved. Added '+rn0+' '+fullName(p.item)+'. Now '+(p.item.qty+rn0)+' in stock.'):('Saved. '+fullName(p.item)+' is marked as on order ('+rn0+'). Tap “Order arrived” when it comes in.'));
     }else if(p.kind==='sell'){
       var left=p.item.qty-p.qty;
-      var ok=await guard(function(){return ref(p.item.id).update(Object.assign({qty:left,snoozedQty:null},soldFields(p.item,p.qty)))});
+      var ok=await guard(function(){return ref(p.item.id).update(Object.assign({qty:left,snoozedQty:null},soldFields(p.item,p.qty,p.salePrice)))});
       if(ok){
         var warn=left<=p.item.reorderAt&&!(p.item.onOrder>0);
         var pn1='';
-        say('Saved. '+lineLabel(p.item)+' is down to '+left+'.'+pn1+(warn?' See the reorder question above.':''));
+        say('Saved. '+lineLabel(p.item)+(p.salePrice!=null?' sold at '+money(p.salePrice)+' each':'')+', down to '+left+'.'+pn1+(warn?' See the reorder question above.':''));
         if(warn){popupId=p.item.id;render()}
       }
     }else if(p.kind==='restock'){
@@ -2107,7 +2121,7 @@ body.sheetview .prompts{position:static;max-height:none}
       var okAll=true,acc={},potNotes='';
       for(var si=0;si<p.steps.length&&okAll;si++){
         var st=p.steps[si],doc2;
-        if(st.kind==='sell'){var base=acc[st.item.id]||st.item;var sf=soldFields(base,st.qty);acc[st.item.id]=Object.assign({},base,sf);okAll=await guard(function(){return ref(st.item.id).update(Object.assign({qty:st.after,snoozedQty:null},sf))});}
+        if(st.kind==='sell'){var base=acc[st.item.id]||st.item;var sf=soldFields(base,st.qty,st.salePrice);acc[st.item.id]=Object.assign({},base,sf);okAll=await guard(function(){return ref(st.item.id).update(Object.assign({qty:st.after,snoozedQty:null},sf))});}
         else if(st.kind==='restock'){
           doc2={qty:st.after,snoozedQty:null,onOrder:Math.max(0,(st.item.onOrder||0)-st.qty)};
           if(st.cost!=null)doc2.cost=st.cost;if(st.price!=null)doc2.price=st.price;if(st.genus&&st.genus!==st.item.genus&&genusOfWord(String(st.genus).split(/\s+/)[0]))doc2.genus=st.genus;if(st.vendor&&!st.item.vendor)doc2.vendor=st.vendor;
@@ -2209,8 +2223,8 @@ body.sheetview .prompts{position:static;max-height:none}
      "x 4" is how many you got; the prices are for EACH one. A " x " between names (a hybrid) is part of the name. */
   var WORDN={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,an:1};
   function listLine(line){
-    var mf=String(line).match(/^\s*[-\u2212\u2013]\s*(\d+)\s+(.*?[a-z].*?)(?:\s+(?:at\s+|@\s*|cost\s+)?\$?(\d+(?:\.\d+)?))?\s*$/i);
-    if(mf)return ['sold '+mf[1]+' '+expandShort(mf[2]).trim()+(mf[3]?' cost '+mf[3]:'')];
+    var mf=String(line).match(/^\s*[-\u2212\u2013]\s*(\d+)\s+(.*?[a-z].*?)(?:\s+(at\s+|for\s+|@\s*|cost\s+|paid\s+)?\$?(\d+(?:\.\d+)?))?\s*$/i);
+    if(mf){var byCost=/^(cost|paid)/i.test(mf[3]||'');return ['sold '+mf[1]+' '+expandShort(mf[2]).trim()+(mf[4]?(byCost?' cost '+mf[4]:' for '+mf[4]):'')]}
     /* short form: "1 trich 5 20" = how many, name, paid (each), sell price (each) */
     var cf=expandShort(String(line)).replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').match(/^\s*(\d+)\s+(.*?[a-z].*?)\s+\$?(\d+(?:\.\d+)?)(?:\s+\$?(\d+(?:\.\d+)?))?\s*$/i);
     if(cf&&!/^\s*\d+\s+(?:sold|bought|got|add|set|x)\b/i.test(line)){
@@ -2509,7 +2523,7 @@ body.sheetview .prompts{position:static;max-height:none}
       '<div class="cs"><h4>Add, the quickest way</h4>'+ex('1 trich 5 20')+'<ul><li>how many → <b>1</b></li><li>name → <b>trich</b> (Trichocereus)</li><li>paid each → <b>$5</b></li><li>sell price each → <b>$20</b></li></ul>'+
         '<h4>Add many at once</h4><ul><li>one per line: press <b>Shift + Enter</b> for a new line</li><li>or put <b>;</b> between them: '+ex('1 trich 5 20; 2 h cooperi 6 15')+'</li><li>or paste a whole list</li><li>then press <b>Enter</b> to save them all</li></ul>'+
         '<h4>Lists work too</h4>'+ex('Dioscorea elephantides x 4  $5.00  will sell for $10')+'<ul><li><b>x 4</b> how many · <b>$5.00</b> paid each · <b>$10</b> sell price each</li></ul>'+ex('Dioscorea elephantides x 4 x 5 x $10')+'<ul><li>name x how many x paid each x sell price each</li></ul></div>'+
-      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<ul><li>or quicker: '+ex('-2 golden')+'</li><li>two lines at different costs? add what it cost: '+ex('-2 golden 5')+'</li></ul>'+'<h4>Change</h4>'+ex('set bunny ears price to 10')+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
+      '<div class="cs"><h4>Sell</h4>'+ex('sold 2 golden barrel')+'<ul><li>or quicker: '+ex('-2 golden')+'</li><li>two lines at different costs? add what it cost: '+ex('-2 golden 5')+'</li></ul>'+'<h4>Change</h4>'+ex('set tephrocactus to 12')+'<ul><li>that changes the sell price</li><li>cost: '+ex('tephrocactus cost 6')+'</li><li>stock: '+ex('tephrocactus stock 4')+'</li></ul>'+'<h4>Delete</h4>'+ex('delete golden barrel')+'<ul><li>deletes right away</li><li>press <b>Undo</b> to bring it back</li></ul></div>'+
       '<div class="cs"><h4>Shortcuts</h4><ul class="sc">'+sc+'</ul><ul><li>add your own: type '+ex('pk means pachypodium')+' in the box and press <b>Enter</b></li><li>remove one: '+ex('delete shortcut pk')+'</li><li>see them all: '+ex('shortcuts')+'</li></ul></div>'+
       '</div><p class="fine" style="margin-top:6px">Press <b>Enter</b> to save. Typos are fine.</p></details>';
   }
