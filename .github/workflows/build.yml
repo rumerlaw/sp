@@ -60,7 +60,11 @@ jobs:
         run: |
           npm audit --audit-level=high > "$RUNNER_TEMP/audit.txt" 2>&1; echo "exit=$?" >> "$RUNNER_TEMP/audit.txt"
           cat "$RUNNER_TEMP/audit.txt"
-      - run: npx electron-builder --publish never
+      - name: Build the app
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --publish never 2>&1 | tee "$RUNNER_TEMP/builder.txt"
       # Start the finished app once to prove it opens with all its safety locks on.
       - name: Test the finished app (open, add, sell, save, backup, reopen)
         shell: bash
@@ -72,7 +76,7 @@ jobs:
             exe="dist/win-unpacked/SP Inventory.exe"
           fi
           export SP_SMOKE_FILE="$RUNNER_TEMP/smoke.txt"
-          "$exe" --smoke-test || true
+          "$exe" --smoke-test > "$RUNNER_TEMP/app-output.txt" 2>&1 || true
           cat "$SP_SMOKE_FILE"; grep -q "SMOKE TEST OK" "$SP_SMOKE_FILE"
       - name: Check the Mac download itself (signature intact, app inside opens)
         if: runner.os == 'macOS'
@@ -98,7 +102,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          f="$RUNNER_TEMP/smoke.txt"; [ -f "$f" ] || echo "no report written" > "$f"
+          f="$RUNNER_TEMP/smoke.txt"; [ -f "$f" ] || { echo "no report written"; echo "--- build output (end) ---"; tail -40 "$RUNNER_TEMP/builder.txt" 2>/dev/null; echo "--- app output (end) ---"; tail -40 "$RUNNER_TEMP/app-output.txt" 2>/dev/null; } > "$f"
           [ -f "$RUNNER_TEMP/signatures.txt" ] && cp "$RUNNER_TEMP/signatures.txt" "test-report-signatures-${RUNNER_OS}.txt" && gh release upload latest "test-report-signatures-${RUNNER_OS}.txt" --clobber
           [ -f "$RUNNER_TEMP/audit.txt" ] && cp "$RUNNER_TEMP/audit.txt" "test-report-audit-${RUNNER_OS}.txt" && gh release upload latest "test-report-audit-${RUNNER_OS}.txt" --clobber
           cp "$f" "test-report-${RUNNER_OS}.txt"; gh release upload latest "test-report-${RUNNER_OS}.txt" --clobber
