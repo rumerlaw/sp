@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "electron": "44.10.0",
-    "electron-builder": "26.0.12"
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.cactusstock.app",
