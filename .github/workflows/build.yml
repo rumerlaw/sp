@@ -58,7 +58,7 @@ jobs:
       - name: Check building blocks for known security problems
         shell: bash
         run: |
-          npm audit --audit-level=high > "$RUNNER_TEMP/audit.txt" 2>&1; echo "exit=$?" >> "$RUNNER_TEMP/audit.txt"
+          rc=0; npm audit --audit-level=high > "$RUNNER_TEMP/audit.txt" 2>&1 || rc=$?; echo "exit=$rc" >> "$RUNNER_TEMP/audit.txt"
           cat "$RUNNER_TEMP/audit.txt"
       - name: Build the app
         shell: bash
