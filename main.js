@@ -43,6 +43,9 @@ const fromOurPage = (e) => {
 };
 /* Network: the app works offline. The only thing it may load from the internet is its two fonts. */
 const NET_OK = /^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com)\//i;
+/* Links may only open these sites in your normal browser (the app's own download page and Dropbox); anything else is ignored. */
+const LINK_OK = /^https:\/\/(github\.com\/rumerlaw\/sp(\/|$)|rumerlaw\.github\.io\/sp(\/|$)|(www\.)?dropbox\.com\/)/i;
+const openLink = (url) => { try { const u = new URL(url); if (u.protocol === 'https:' && !u.username && !u.password && LINK_OK.test(u.href)) shell.openExternal(u.href); } catch (e) {} };
 const LOCAL_OK = /^(app:\/\/sp\/|data:|blob:|devtools:)/i;
 
 function createWindow() {
@@ -73,9 +76,9 @@ function createWindow() {
     tryClose();
   });
   /* The window can only ever show this app's own page. Links go to the normal browser. */
-  win.webContents.on('will-navigate', (e, url) => { e.preventDefault(); if (/^https:\/\//i.test(url)) shell.openExternal(url); });
+  win.webContents.on('will-navigate', (e, url) => { e.preventDefault(); openLink(url); });
   win.webContents.on('will-redirect', (e) => e.preventDefault());
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { openLink(url); return { action: 'deny' }; });
   if (SMOKE) runSmokeTest(win);
   win.loadURL(PAGE_URL);
   return win;
@@ -273,7 +276,7 @@ app.whenReady().then(() => {
 });
 app.on('web-contents-created', (e, contents) => {
   contents.on('will-attach-webview', (ev) => ev.preventDefault());
-  contents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  contents.setWindowOpenHandler(({ url }) => { openLink(url); return { action: 'deny' }; });
 });
 /* Closing the window quits the app on Mac too, so it never keeps running hidden in the background. */
 app.on('window-all-closed', () => app.quit());

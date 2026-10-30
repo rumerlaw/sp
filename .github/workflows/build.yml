@@ -54,6 +54,12 @@ jobs:
           npm audit signatures > "$RUNNER_TEMP/signatures.txt" 2>&1; rc=$?; echo "exit=$rc" >> "$RUNNER_TEMP/signatures.txt"
           cat "$RUNNER_TEMP/signatures.txt"
           exit $rc
+      # Report any known security problems in the building blocks (shown in the test reports; does not stop the build).
+      - name: Check building blocks for known security problems
+        shell: bash
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit.txt" 2>&1; echo "exit=$?" >> "$RUNNER_TEMP/audit.txt"
+          cat "$RUNNER_TEMP/audit.txt"
       - run: npx electron-builder --publish never
       # Start the finished app once to prove it opens with all its safety locks on.
       - name: Test the finished app (open, add, sell, save, backup, reopen)
@@ -94,6 +100,7 @@ jobs:
         run: |
           f="$RUNNER_TEMP/smoke.txt"; [ -f "$f" ] || echo "no report written" > "$f"
           [ -f "$RUNNER_TEMP/signatures.txt" ] && cp "$RUNNER_TEMP/signatures.txt" "test-report-signatures-${RUNNER_OS}.txt" && gh release upload latest "test-report-signatures-${RUNNER_OS}.txt" --clobber
+          [ -f "$RUNNER_TEMP/audit.txt" ] && cp "$RUNNER_TEMP/audit.txt" "test-report-audit-${RUNNER_OS}.txt" && gh release upload latest "test-report-audit-${RUNNER_OS}.txt" --clobber
           cp "$f" "test-report-${RUNNER_OS}.txt"; gh release upload latest "test-report-${RUNNER_OS}.txt" --clobber
           if [ -f "$RUNNER_TEMP/dmg-check.txt" ]; then { cat "$RUNNER_TEMP/dmg-check.txt"; echo; cat "$RUNNER_TEMP/smoke-dmg.txt" 2>/dev/null; } > test-report-dmg.txt; gh release upload latest test-report-dmg.txt --clobber; fi
       - name: Fingerprints of the files
